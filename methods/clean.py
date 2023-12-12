@@ -1,14 +1,18 @@
 # Core imports
 import string
 import pandas as pd
+from functools import partial
+from multiprocessing import Pool
 
 # Cleaning imports
 import nltk
+import spacy
 from nltk.corpus import stopwords
 
+from tqdm import tqdm
 
 # Local imports
-from util import log
+from util import log, parallel_lemmatize
 
 
 class Dataset:
@@ -50,23 +54,32 @@ class Dataset:
 
 class CleanData(Dataset):
     """
-    There exists a few possible data cleaning techniques:
-        i. Lowercase
-        ii. Remove link
-        iii. Punctuation
-        iv. Stopwords
-    I'm implementing these as functions where we can turn them on or off to see the effect on output of model.
+    This class is used to clean the Dataset object.
+    Use the function run() in order to clean the dataset.
 
     """
 
-    def __init__(self, path,
+    def __init__(self, path: str,
                  remove_lowercase=True,
                  remove_punctuation=True,
                  remove_links=True,
-                 remove_stopwords=True):
+                 remove_stopwords=True,
+                 lemmatize_words=True,
+                 save_csv=True):
+        """
+        :param path: Points to the string path of the CSV file.
+        :param remove_lowercase: Whether to remove the lowercase characters
+        :param remove_punctuation: Whether to remove punctuation characters
+        :param remove_links: Whether to remove hyperlinks
+        :param remove_stopwords: Whether to remove stopwords
+        :param lemmatize_words: Lemmatize the words
+        """
+
         super().__init__(path)
         self.remove_lowercase, self.remove_punctuation = remove_lowercase, remove_punctuation
         self.remove_links, self.remove_stopwords = remove_links, remove_stopwords
+        self.lemmatize_words = lemmatize_words
+        self.save_csv = save_csv
 
     def run(self):
         if self.remove_lowercase:
@@ -77,7 +90,10 @@ class CleanData(Dataset):
             pass  # TODO: Implement
         if self.remove_stopwords:
             self.stopwords()
-
+        if self.lemmatize_words:
+            self.lemmatize()
+        if self.save_csv:
+            self.save()
         return self.df
 
     def lowercase(self):
@@ -114,12 +130,23 @@ class CleanData(Dataset):
             nltk.download('stopwords')
             log('Download stopwords successful, please re-run the script')
 
+    def lemmatize(self):
+        log('Lemmaizing text...')
+        log('This will take a while...')
+        self.df.post = parallel_lemmatize(self.df.post)
+
+    def save(self):
+        log('Saving cleaned data...')
+        out_path = '/'.join(self.path.split('/')[:-1]) + '/cleaned_extrovert.csv'
+        self.df.to_csv(out_path, index=False)
 
 
 if __name__ == '__main__':
-    data_path = '../data/changed_columns.csv'
-    # data = ExploreDataset(path=data_path)
-    # count = CleanData(data_path)
-    # print(count)
-    df = CleanData(path=data_path).run()
+
+    df = CleanData(path='../data/changed_columns.csv',
+                   remove_lowercase=True,
+                   remove_stopwords=True,
+                   remove_punctuation=True,
+                   lemmatize_words=True,
+                   save_csv=True).run()
     print(df.head())
