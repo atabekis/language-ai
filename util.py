@@ -1,8 +1,12 @@
 # Core imports
+import os
 import numpy as np
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
+from concurrent.futures import ProcessPoolExecutor
+from threading import Thread
 
+import pandas as pd
 from tqdm import tqdm
 
 # NLP imports
@@ -27,12 +31,19 @@ def lemmatize_text(texts):
     return lemmatized_texts
 
 
-def parallel_lemmatize(data, batch_size=1):
-    with Pool(processes=cpu_count() - 1) as pool:
-        results = list(
-            tqdm(pool.imap(lemmatize_text, [data[i:i + batch_size] for i in range(0, len(data), batch_size)]),
-                 total=len(data)))
-    return results
+def parallel_lemmatize(data):
+
+    processors = os.cpu_count()
+    batches = np.array_split(data, processors)
+
+    with ProcessPoolExecutor(processors) as executer:
+        result = pd.concat(executer.map(lemmatize_text, batches))
+    return result
+    # with Pool(processes=cpu_count()l - 1) as pool:
+    #     results = list(
+    #         tqdm(pool.imap(lemmatize_text, [data[i:i + batch_size] for i in range(0, len(data), batch_size)]),
+    #              total=len(data)))
+    # return results
 
 
 # Testing framework here:

@@ -131,9 +131,10 @@ class CleanData(Dataset):
             log('Download stopwords successful, please re-run the script')
 
     def lemmatize(self):
-        log('Lemmaizing text...')
-        log('This will take a while...')
-        self.df.post = parallel_lemmatize(self.df.post)
+        return NotImplemented
+        # log('Lemmaizing text...')
+        # log('This will take a while...')
+        # self.df.post = parallel_lemmatize(self.df.post)
 
     def save(self):
         log('Saving cleaned data...')
