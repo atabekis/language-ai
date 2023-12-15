@@ -10,11 +10,9 @@ import spacy
 from tqdm import tqdm
 from datetime import timedelta
 
-# Local
-from util import split_dataframe
 
-__PROCESSORS__ = os.cpu_count() - 1  # minus one for playing it safe and not turning my laptop into a fusion reactor
-__BATCH_SIZE__ = 100
+__PROCESSORS__ = os.cpu_count() - 4  # minus x for playing it safe and not turning my laptop into a fusion reactor
+__BATCH_SIZE__ = 250
 
 """
 Findings:

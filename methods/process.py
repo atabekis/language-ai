@@ -6,13 +6,13 @@ This includes the steps
 
     Additionally: inbetween -> Move lemmatization here since we can use tokenized sentences.
 """
-
+import os
 # Python imports
 import re
 import pandas as pd
 
 # Local imports
-from util import log
+from util import log, save_file_to_path
 from methods.functions import tokenize
 
 
@@ -77,8 +77,7 @@ class Tokenizer:
 
     def save(self):
         log('Saving tokenized dataframe...')
-        out_path = '/'.join(self.path.split('/')[:-1]) + '/tokenized_extrovert.csv'
-        self.df.to_csv(out_path, index=False)
+        self.df.to_csv(save_file_to_path(self.path, 'tokenized_extrovert.csv'), index=False)
 
 
 """

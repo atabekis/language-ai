@@ -1,5 +1,6 @@
 # Core imports
 import html
+import os
 import string
 import pandas as pd
 
@@ -8,7 +9,7 @@ import nltk
 from nltk.corpus import stopwords
 
 # Local imports
-from util import log, parallel_lemmatize
+from util import log, save_file_to_path
 
 
 class Dataset:
@@ -23,8 +24,10 @@ class Dataset:
 
     def __init__(self, path: str):
         self.path = path
-        self.df = pd.read_csv(path,
-                              engine='pyarrow')  # This reduces the loading time by 60%
+        self.df = pd.read_csv(
+            path,
+            engine='pyarrow')  # This reduces the loading time by 60%
+        self.change_column_names()
 
     def __str__(self):
         return (f"The dataset contains {len(self.df)} rows, and 3 columns: {set(self.df.columns)} \n\n"
@@ -47,6 +50,9 @@ class Dataset:
                            self.helper_labels[1]: counts[1]}
         return labelled_counts
 
+    def change_column_names(self):
+        self.df.rename(columns={'auhtor_ID': 'author_id', 'extrovert': 'label'})
+
 
 class CleanData(Dataset):
     """
@@ -55,14 +61,15 @@ class CleanData(Dataset):
 
     """
 
-    def __init__(self, path: str,
-                 remove_lowercase=True,
-                 remove_punctuation=True,
-                 remove_links=True,
-                 remove_stopwords=True,
-                 lemmatize_words=True,
-                 save_csv=True,
-                 ):
+    def __init__(
+            self,
+            path: str,
+            remove_lowercase=True,
+            remove_punctuation=True,
+            remove_links=True,
+            remove_stopwords=True,
+            lemmatize_words=True,
+            save_csv=True):
         """
         :param path: Points to the string path of the CSV file.
         :param remove_lowercase: Whether to remove the lowercase characters
@@ -142,16 +149,18 @@ class CleanData(Dataset):
 
     def save(self):
         log('Saving cleaned data...')
-        out_path = '/'.join(self.path.split('/')[:-1]) + '/cleaned_extrovert.csv'
-        self.df.to_csv(out_path, index=False)
+        self.df.to_csv(save_file_to_path(self.path, 'cleaned_extrovert.csv'), index=False)
+
+
 
 
 if __name__ == '__main__':
-    df = CleanData(path='../data/changed_columns.csv',
-                   remove_lowercase=True,
-                   remove_stopwords=True,
-                   remove_punctuation=True,
-                   lemmatize_words=True,
-                   save_csv=True,
-                   ).run()
+    df = CleanData(
+        path='../data/changed_columns.csv',
+        remove_lowercase=True,
+        remove_stopwords=True,
+        remove_punctuation=True,
+        lemmatize_words=True,
+        save_csv=True,
+    ).run()
     print(df.head())
