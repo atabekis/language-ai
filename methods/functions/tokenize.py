@@ -13,6 +13,9 @@ from datetime import timedelta
 # Local
 from util import split_dataframe
 
+__PROCESSORS__ = os.cpu_count() - 1  # minus one for playing it safe and not turning my laptop into a fusion reactor
+__BATCH_SIZE__ = 100
+
 """
 Findings:
 
@@ -65,7 +68,8 @@ def tokenize_spacy(df: pd.DataFrame) -> List[List[str]]:
 
         start = time.monotonic()
 
-        for doc in tqdm(nlp.pipe(texts_array, batch_size=250, n_process=os.cpu_count()), total=len(texts_array),
+        for doc in tqdm(nlp.pipe(texts_array, batch_size=__BATCH_SIZE__, n_process=__PROCESSORS__),
+                        total=len(texts_array),
                         desc='This will take a while, get yourself some coffee :)'):
 
             tokens = [token.text for token in doc]
@@ -82,5 +86,3 @@ def tokenize_spacy(df: pd.DataFrame) -> List[List[str]]:
 if __name__ == '__main__':
     df = pd.read_csv('../../data/cleaned_extrovert.csv', engine='pyarrow')
     print(tokenize_spacy(df))
-
-
