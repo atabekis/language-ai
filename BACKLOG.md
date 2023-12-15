@@ -12,3 +12,10 @@ As of 05/12/2023
     * whether the usage of multiple languages in reddit causes the introverted/extroverted label to change?
 
 
+
+## _V1.1_
+As of 14/12/2023
+
+* Add in util.py: 
+  * checking dependencies for spacy and nltk pipes.
+* 

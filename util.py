@@ -32,7 +32,11 @@ def lemmatize_text(texts):
 
 
 def parallel_lemmatize(data):
+    """
 
+    :param data:
+    :return:
+    """
     processors = os.cpu_count()
     batches = np.array_split(data, processors)
 
@@ -44,6 +48,46 @@ def parallel_lemmatize(data):
     #         tqdm(pool.imap(lemmatize_text, [data[i:i + batch_size] for i in range(0, len(data), batch_size)]),
     #              total=len(data)))
     # return results
+
+
+def split_dataframe(df, n):
+    """
+    Split a DataFrame or Series into 'n' pieces.
+
+    :param df: pd.DataFrame or pd.Series; The input DataFrame or Series.
+    :param n: int Number of pieces to split the DataFrame or Series into.
+    :return: List of pd.DataFrame or pd.Series; List containing 'n' pieces of the input DataFrame or Series.
+    """
+    if not isinstance(df, (pd.DataFrame, pd.Series)):
+        raise ValueError("Input must be a DataFrame or Series.")
+
+    total_rows = len(df)
+    rows_per_chunk = total_rows // n
+    remainder = total_rows % n
+
+    chunks = []
+    start = 0
+
+    for i in range(n):
+        chunk_size = rows_per_chunk + (1 if i < remainder else 0)
+        end = start + chunk_size
+        chunks.append(df.iloc[start:end])
+        start = end
+
+    return chunks
+
+
+def reconstruct_dataframe(chunks):
+    """
+    Reconstruct the original DataFrame or Series from the split pieces.
+
+    :param chunks: List of pd.DataFrame or pd.Series; List containing pieces of the original DataFrame or Series
+    return: pd.DataFrame or pd.Series; The reconstructed DataFrame or Series.
+    """
+    if not all(isinstance(chunk, (pd.DataFrame, pd.Series)) for chunk in chunks):
+        raise ValueError("All elements in the input list must be DataFrames or Series.")
+
+    return pd.concat(chunks, ignore_index=True)
 
 
 # Testing framework here:

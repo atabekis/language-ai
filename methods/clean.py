@@ -1,15 +1,11 @@
 # Core imports
+import html
 import string
 import pandas as pd
-from functools import partial
-from multiprocessing import Pool
 
 # Cleaning imports
 import nltk
-import spacy
 from nltk.corpus import stopwords
-
-from tqdm import tqdm
 
 # Local imports
 from util import log, parallel_lemmatize
@@ -25,7 +21,7 @@ class Dataset:
         1: 'Extroverted'
     }
 
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
         self.df = pd.read_csv(path,
                               engine='pyarrow')  # This reduces the loading time by 60%
@@ -65,7 +61,8 @@ class CleanData(Dataset):
                  remove_links=True,
                  remove_stopwords=True,
                  lemmatize_words=True,
-                 save_csv=True):
+                 save_csv=True,
+                 ):
         """
         :param path: Points to the string path of the CSV file.
         :param remove_lowercase: Whether to remove the lowercase characters
@@ -81,11 +78,13 @@ class CleanData(Dataset):
         self.lemmatize_words = lemmatize_words
         self.save_csv = save_csv
 
-    def run(self):
+    def run(self) -> pd.DataFrame:
         if self.remove_lowercase:
             self.lowercase()
         if self.remove_punctuation:
             self.punctuation()
+            self.decode()
+
         if self.remove_links:
             pass  # TODO: Implement
         if self.remove_stopwords:
@@ -100,6 +99,10 @@ class CleanData(Dataset):
         log('Removing uppercase letters...')
         self.df.post = self.df.post.str.lower()
 
+    def decode(self):
+        log('Decoding HTML attributes...')
+        self.df.post = self.df.post.apply(lambda x: html.unescape(x))
+
     def links(self):
         """
         There exists a total of 7 rows:
@@ -113,6 +116,7 @@ class CleanData(Dataset):
     def punctuation(self):
         log('Removing punctuation...')
         self.df.post = self.df.post.str.replace(f'[{string.punctuation}]', '')
+        self.df.post = self.df.post.str.replace(f'\\', '')
 
     def stopwords(self):
         try:
@@ -143,11 +147,11 @@ class CleanData(Dataset):
 
 
 if __name__ == '__main__':
-
     df = CleanData(path='../data/changed_columns.csv',
                    remove_lowercase=True,
                    remove_stopwords=True,
                    remove_punctuation=True,
                    lemmatize_words=True,
-                   save_csv=True).run()
+                   save_csv=True,
+                   ).run()
     print(df.head())
