@@ -8,7 +8,7 @@ from typing import List
 # Other
 import spacy
 from tqdm import tqdm
-from datetime import timedelta
+from datetime import (timedelta)
 
 
 __PROCESSORS__ = os.cpu_count() - 4  # minus x for playing it safe and not turning my laptop into a fusion reactor

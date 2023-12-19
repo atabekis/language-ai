@@ -3,6 +3,7 @@ import html
 import os
 import string
 import pandas as pd
+from functools import cache
 
 # Cleaning imports
 import nltk
@@ -24,9 +25,7 @@ class Dataset:
 
     def __init__(self, path: str):
         self.path = path
-        self.df = pd.read_csv(
-            path,
-            engine='pyarrow')  # This reduces the loading time by 60%
+        self.df = self.read_data()
         self.change_column_names()
 
     def __str__(self):
@@ -34,6 +33,10 @@ class Dataset:
                 f"The dataset has the value counts: {self.check_imbalance()}\n\n"
                 f"Every row represents a user's posts and comments, every row has 1500 space-separated 'words'\n\n"
                 f"There are {self.author_count()} unique authors.")
+
+    @cache
+    def read_data(self):
+        return pd.read_csv(self.path, engine='pyarrow')  # This reduces the loading time by 60%
 
     def info(self):
         return self.df.info()
@@ -51,7 +54,7 @@ class Dataset:
         return labelled_counts
 
     def change_column_names(self):
-        self.df.rename(columns={'auhtor_ID': 'author_id', 'extrovert': 'label'})
+        self.df.rename(columns={'auhtor_ID': 'author_id', 'extrovert': 'label'}, inplace=True)
 
 
 class CleanData(Dataset):
@@ -83,6 +86,8 @@ class CleanData(Dataset):
         self.remove_lowercase, self.remove_punctuation = remove_lowercase, remove_punctuation
         self.remove_links, self.remove_stopwords = remove_links, remove_stopwords
         self.lemmatize_words = lemmatize_words
+
+        self.out_path = save_file_to_path(self.path, 'cleaned_extrovert.csv')
         self.save_csv = save_csv
 
     def run(self) -> pd.DataFrame:
@@ -149,7 +154,7 @@ class CleanData(Dataset):
 
     def save(self):
         log('Saving cleaned data...')
-        self.df.to_csv(save_file_to_path(self.path, 'cleaned_extrovert.csv'), index=False)
+        self.df.to_csv(self.out_path, index=False)
 
 
 

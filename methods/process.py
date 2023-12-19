@@ -10,6 +10,11 @@ import os
 # Python imports
 import re
 import pandas as pd
+from functools import lru_cache, cache
+
+# NLP imports
+from sklearn.feature_extraction.text import CountVectorizer
+
 
 # Local imports
 from util import log, save_file_to_path
@@ -19,7 +24,7 @@ from methods.functions import tokenize
 class Tokenizer:
     TOKENIZER_ENGINES = {'regex', 'nltk', 'spacy'}
 
-    def __init__(self, path: str, engine: str = 'spacy', save_csv: bool = True):
+    def __init__(self, path: str, engine: str = 'spacy', save_csv: bool = True, drop_original: bool = True):
         """
         Given a path to a CSV file, tokenizes each row using a dataframe
         :param path: path to the CSV file
@@ -35,8 +40,10 @@ class Tokenizer:
 
         self.spacy_nlp = None
 
+        self.drop_original = drop_original
         self.save_csv = save_csv
 
+    @cache
     def read_data(self):
         log('Reading data...')
         return pd.read_csv(self.path, engine='pyarrow')
@@ -54,6 +61,9 @@ class Tokenizer:
         else:
             raise ValueError(f"Unsupported tokenizer engine: {self.engine}")
 
+        if self.drop_original:
+            self.drop_original_column()
+
         if self.save_csv:
             self.save()
 
@@ -63,7 +73,7 @@ class Tokenizer:
         def regex_find(row):
             return re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+", row)
 
-        self.df['tokenized'] = self.df['post'].apply(regex_find)
+        self.df['tokens'] = self.df['post'].apply(regex_find)
 
     def tokenize_nlkt(self):
         log('Tokenizing the dataframe using nltk...')
@@ -73,7 +83,11 @@ class Tokenizer:
     def tokenize_spacy(self):
         log('Tokenizing the dataframe using spacy...')
 
-        self.df['tokenized'] = tokenize.tokenize_spacy(self.df)
+        self.df['tokens'] = tokenize.tokenize_spacy(self.df)
+
+    def drop_original_column(self):
+        log('Dropping the original column...')
+        self.df = self.df.drop('post', axis=1)
 
     def save(self):
         log('Saving tokenized dataframe...')
@@ -81,19 +95,44 @@ class Tokenizer:
 
 
 """
-We're planning to implement two ways of vectorizing:
-    CBOW model = dataset with short sentences but high number of samples (bigger dataset)
-    SG model = dataset with long sentences and low number of samples (smaller dataset)
-    
-    from https://stackoverflow.com/questions/39224236/word2vec-cbow-skip-gram-performance-wrt-training-dataset-size
+Found the holy bible of vectorizing:
+https://neptune.ai/blog/vectorization-techniques-in-nlp-guide
 """
 
+
 class Vectorizer:
-    pass
+
+    VECTORIZER_ENGINES = {'bow', 'tf-idf', 'word2vec'}
+
+    def __init__(self, path, engine='bow'):
+        if engine not in self.VECTORIZER_ENGINES:
+            raise ValueError(f"Invalid vectorizer engine. Options are: {', '.join(self.VECTORIZER_ENGINES)}")
+
+        self.path = path
+        self.engine = engine
+        self.df = self.read_data()
+
+    def read_data(self):
+        log('Reading data...')
+        return pd.read_csv(self.path, engine='pyarrow')
+
+    def vectorize(self):
+        return NotImplemented
+
+    def bow_vectorize(self):
+        log('Vectorizing using: Bag of Words...')
+
+
+        vectorizer = CountVectorizer(stop_words='english')
+        x = vectorizer.fit_transform(
+            self.df['post'].apply(lambda x: ' '.join(x)))
+        feature_names = vectorizer.get_feature_names_out()
+
+        dtm_df = pd.DataFrame(x.toarray(), columns=feature_names)
+        return dtm_df
+
 
 
 if __name__ == '__main__':
-    token = Tokenizer('../data/cleaned_extrovert.csv',
-                      engine='spacy',
-                      save_csv=True)
-    token.run()
+    vectorizer = Vectorizer('../data/tokenized_extrovert.csv')
+    print(vectorizer.bow_vectorize())

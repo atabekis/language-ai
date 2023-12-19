@@ -21,10 +21,8 @@ def clean_and_tokenize():
     clean = CleanData(__FILE_PATH__)
     clean.run()
 
-    clean_file_path = clean.out_path()
-
     #  Tokenize
-    token = Tokenizer(clean_file_path)
+    token = Tokenizer('data/cleaned_extrovert.csv')
     token.run()
 
 
