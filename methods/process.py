@@ -9,11 +9,15 @@ This includes the steps
 import os
 # Python imports
 import re
+
+import numpy as np
 import pandas as pd
+from scipy import sparse
 from functools import lru_cache, cache
 
+
 # NLP imports
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 
 # Local imports
@@ -119,20 +123,23 @@ class Vectorizer:
     def vectorize(self):
         return NotImplemented
 
-    def bow_vectorize(self):
+    def bow_vectorize(self, ngram_range=(1, 1)):
         log('Vectorizing using: Bag of Words...')
 
+        cv = CountVectorizer(ngram_range=ngram_range)
+        return cv.fit_transform(self.df['tokens'])
 
-        vectorizer = CountVectorizer(stop_words='english')
-        x = vectorizer.fit_transform(
-            self.df['post'].apply(lambda x: ' '.join(x)))
-        feature_names = vectorizer.get_feature_names_out()
-
-        dtm_df = pd.DataFrame(x.toarray(), columns=feature_names)
-        return dtm_df
-
+    def tfidf_vectorize(self):
+        log('Vectorizing using: TF*iDF...')
+        tfidf = TfidfVectorizer()
+        vectors = tfidf.fit_transform(self.df['tokens'])
+        tfidf_df = pd.DataFrame(
+            np.array(vectors).astype(np.uint8),
+            columns=tfidf.get_feature_names_out())
+        df_vectorized = pd.concat([self.df, tfidf_df], axis=1)
+        return df_vectorized
 
 
 if __name__ == '__main__':
     vectorizer = Vectorizer('../data/tokenized_extrovert.csv')
-    print(vectorizer.bow_vectorize())
+    print(vectorizer.tfidf_vectorize())
