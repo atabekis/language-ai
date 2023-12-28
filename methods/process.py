@@ -1,145 +1,72 @@
 """
-This file is used to process the data.
-This includes the steps
-    1. Tokenization: How?????
-    2. Vectorization: How???
-
-    Additionally: inbetween -> Move lemmatization here since we can use tokenized sentences.
+In this .py file we lay out the pipelines for the various methods of
+    1. Tokenization
+    2. Vectorization
+    3. Regression/model
 """
-import os
-# Python imports
-import re
+from sklearn.pipeline import Pipeline
 
-import numpy as np
-import pandas as pd
-from scipy import sparse
-from functools import lru_cache, cache
-
-
-# NLP imports
+from sklearn.svm import SVC
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
-
-# Local imports
-from util import log, save_file_to_path
-from methods.functions import tokenize
+# For passing onto all random states:
+__RANDOM_SEED__ = 5
 
 
-class Tokenizer:
-    TOKENIZER_ENGINES = {'regex', 'nltk', 'spacy'}
+def build_pipeline(pipeline_model: str) -> Pipeline:
+    """
+    Takes the type of pipeline as parameter and returns a sklearn Pipeline.
+    :param pipeline_model: TODO: add the types to docstring
+    :return: sklearn Pipeline
+    """
+    models = {
+        # Basic models go here: nb, svm, logit, rf
+        'naive-bayes': {
+            'vectorizer': CountVectorizer(
+                ngram_range=(1, 3),
+                binary=True  # TODO: experiment with this statement
+            ),
+            'classifier': MultinomialNB()
+        },
+        'svm': {
+            'vectorizer': TfidfVectorizer(
+                ngram_range=(1, 3),
+                use_idf=True,
+                smooth_idf=True,
+                sublinear_tf=True,  # this is what the lecturer showed us: 1+log(tf)
+            ),
+            'classifier': SVC()
+        },
+        'logistic': {
+            'vectorizer': TfidfVectorizer(
+                ngram_range=(1, 3),
+                use_idf=True,
+                smooth_idf=True,
+                sublinear_tf=True,
+            ),
+            'classifier': LogisticRegression(),
+        },
+        'random-forest': {
+            'vectorizer': CountVectorizer(
+                ngram_range=(1, 3),
+                binary=True  # TODO: experiment with this statement
+            ),
+            'classifier': RandomForestClassifier()
+        },
 
-    def __init__(self, path: str, engine: str = 'spacy', save_csv: bool = True, drop_original: bool = True):
-        """
-        Given a path to a CSV file, tokenizes each row using a dataframe
-        :param path: path to the CSV file
-        :param engine: The selected tokenizer engine to be used. Options are 'regex', 'nltk', 'spacy'.
-        """
-        # Perform checks before reading the csv to reduce memory usage on false inputs :)
-        if engine not in self.TOKENIZER_ENGINES:
-            raise ValueError(f"Invalid tokenizer engine. Options are: {', '.join(self.TOKENIZER_ENGINES)}")
-
-        self.path = path
-        self.engine = engine
-        self.df = self.read_data()
-
-        self.spacy_nlp = None
-
-        self.drop_original = drop_original
-        self.save_csv = save_csv
-
-    @cache
-    def read_data(self):
-        log('Reading data...')
-        return pd.read_csv(self.path, engine='pyarrow')
-
-    def run(self):
-        if self.engine == 'regex':
-            self.tokenize_regex()
-
-        elif self.engine == 'nltk':
-            self.tokenize_nlkt()
-
-        elif self.engine == 'spacy':
-            self.tokenize_spacy()
-
-        else:
-            raise ValueError(f"Unsupported tokenizer engine: {self.engine}")
-
-        if self.drop_original:
-            self.drop_original_column()
-
-        if self.save_csv:
-            self.save()
-
-    def tokenize_regex(self):
-        log('Tokenizing the dataframe using regex...')
-
-        def regex_find(row):
-            return re.findall("[A-Z]{2,}(?![a-z])|[A-Z][a-z]+(?=[A-Z])|[\'\w\-]+", row)
-
-        self.df['tokens'] = self.df['post'].apply(regex_find)
-
-    def tokenize_nlkt(self):
-        log('Tokenizing the dataframe using nltk...')
-
-        return NotImplemented
-
-    def tokenize_spacy(self):
-        log('Tokenizing the dataframe using spacy...')
-
-        self.df['tokens'] = tokenize.tokenize_spacy(self.df)
-
-    def drop_original_column(self):
-        log('Dropping the original column...')
-        self.df = self.df.drop('post', axis=1)
-
-    def save(self):
-        log('Saving tokenized dataframe...')
-        self.df.to_csv(save_file_to_path(self.path, 'tokenized_extrovert.csv'), index=False)
-
-
-"""
-Found the holy bible of vectorizing:
-https://neptune.ai/blog/vectorization-techniques-in-nlp-guide
-"""
-
-
-class Vectorizer:
-
-    VECTORIZER_ENGINES = {'bow', 'tf-idf', 'word2vec'}
-
-    def __init__(self, path, engine='bow'):
-        if engine not in self.VECTORIZER_ENGINES:
-            raise ValueError(f"Invalid vectorizer engine. Options are: {', '.join(self.VECTORIZER_ENGINES)}")
-
-        self.path = path
-        self.engine = engine
-        self.df = self.read_data()
-
-    def read_data(self):
-        log('Reading data...')
-        return pd.read_csv(self.path, engine='pyarrow')
-
-    def vectorize(self):
-        return NotImplemented
-
-    def bow_vectorize(self, ngram_range=(1, 1)):
-        log('Vectorizing using: Bag of Words...')
-
-        cv = CountVectorizer(ngram_range=ngram_range)
-        return cv.fit_transform(self.df['tokens'])
-
-    def tfidf_vectorize(self):
-        log('Vectorizing using: TF*iDF...')
-        tfidf = TfidfVectorizer()
-        vectors = tfidf.fit_transform(self.df['tokens'])
-        tfidf_df = pd.DataFrame(
-            np.array(vectors).astype(np.uint8),
-            columns=tfidf.get_feature_names_out())
-        df_vectorized = pd.concat([self.df, tfidf_df], axis=1)
-        return df_vectorized
+    }
+    selected_model = models.get(pipeline_model)
+    if selected_model:
+        return Pipeline([
+            ('vectorizer', selected_model['vectorizer']),
+            ('classifier', selected_model['classifier'])
+        ])
+    else:
+        raise KeyError(f"Invalid key: {pipeline_model}. Choose from {list(models.keys())}.")
 
 
 if __name__ == '__main__':
-    vectorizer = Vectorizer('../data/tokenized_extrovert.csv')
-    print(vectorizer.tfidf_vectorize())
+    pipeline = build_pipeline('logistic')

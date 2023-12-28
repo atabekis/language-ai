@@ -1,16 +1,20 @@
 # Core imports
 import html
-import os
+import os.path
 import string
 import pandas as pd
-from functools import cache
 
 # Cleaning imports
 import nltk
 from nltk.corpus import stopwords
 
+from sklearn.model_selection import train_test_split
+
 # Local imports
 from util import log, save_file_to_path
+
+# Reproducibility
+__random_state__ = 5
 
 
 class Dataset:
@@ -34,7 +38,6 @@ class Dataset:
                 f"Every row represents a user's posts and comments, every row has 1500 space-separated 'words'\n\n"
                 f"There are {self.author_count()} unique authors.")
 
-    @cache
     def read_data(self):
         return pd.read_csv(self.path, engine='pyarrow')  # This reduces the loading time by 60%
 
@@ -157,15 +160,27 @@ class CleanData(Dataset):
         self.df.to_csv(self.out_path, index=False)
 
 
+class Reader:
+    """
+    This class reads cleaned data
+    """
+    def __init__(self, path: str):
+        self.df = pd.read_csv(path, engine='pyarrow')
+
+        self.labels = self.df['label']
+        self.posts = self.df['post']
+
+        self.train = [[], []]  # X_train, y_train
+        self.test = [[], []]  # X_test, y_test
+        self._split_data()
+
+    def _split_data(self):
+        self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
+            self.df['post'], self.df['label'],
+            test_size=0.2, random_state=__random_state__)
+
 
 
 if __name__ == '__main__':
-    df = CleanData(
-        path='../data/changed_columns.csv',
-        remove_lowercase=True,
-        remove_stopwords=True,
-        remove_punctuation=True,
-        lemmatize_words=True,
-        save_csv=True,
-    ).run()
-    print(df.head())
+    data = Reader('../data/cleaned_extrovert.csv')
+    print(data)

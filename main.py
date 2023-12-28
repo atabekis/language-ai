@@ -11,20 +11,12 @@ If the code doesn't run when cloning from GitHub, the data folder is assumed to 
 import os
 
 # Local imports
-from methods.process import Tokenizer
-from methods.clean import CleanData
+from methods.reader import CleanData
 
 __FILE_PATH__ = os.path.join(os.path.dirname(__file__), 'data', 'extrovert_introvert.csv')
 
 
-def clean_and_tokenize():
-    clean = CleanData(__FILE_PATH__)
-    clean.run()
-
-    #  Tokenize
-    token = Tokenizer('data/cleaned_extrovert.csv')
-    token.run()
 
 
 if __name__ == '__main__':
-    clean_and_tokenize()
+    pass
