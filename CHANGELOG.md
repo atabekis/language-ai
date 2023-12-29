@@ -1,3 +1,12 @@
+### V2.4 - ADD
+ _Ata Bekişoğlu - 29/12/2023_
+* Added `neural.py` under _methods_.
+  * The class NeuralNetwork takes in model type and runs a neural model. Currently, I've only implemented a **Convolutional Neural Network**
+  * Testing of the neural networks can be found under `tests/explore_neural.ipynb`
+* Small changes to `process.py`,  `reader.py`, `util.py`
+  * Changed the seed type variable naming
+  * Some much needed clean-up
+  
 ### V2.3 - 59d5a8c
  _Ata Bekişoğlu - 28/12/2023_
 * I restructured quite a lot of the repo here since 've realized we don't really need most of the previous code after using sklearn Pipelines.
