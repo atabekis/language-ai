@@ -1,4 +1,4 @@
-### V2.4 - ADD
+### V2.4 - 05d9f77
  _Ata Bekişoğlu - 29/12/2023_
 * Added `neural.py` under _methods_.
   * The class NeuralNetwork takes in model type and runs a neural model. Currently, I've only implemented a **Convolutional Neural Network**
