@@ -12,8 +12,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
+
 # For passing onto all random states:
 __RANDOM_SEED__ = 5
+
+# Helper for the build_pipeline
+model_keys = ['naive-bayes', 'svm', 'logistic', 'random-forest']
 
 
 def build_pipeline(pipeline_model: str) -> Pipeline:
@@ -47,14 +51,18 @@ def build_pipeline(pipeline_model: str) -> Pipeline:
                 smooth_idf=True,
                 sublinear_tf=True,
             ),
-            'classifier': LogisticRegression(),
+            'classifier': LogisticRegression(
+                random_state=__RANDOM_SEED__
+            ),
         },
         'random-forest': {
             'vectorizer': CountVectorizer(
                 ngram_range=(1, 3),
                 binary=True  # TODO: experiment with this statement
             ),
-            'classifier': RandomForestClassifier()
+            'classifier': RandomForestClassifier(
+                random_state=__RANDOM_SEED__
+            )
         },
 
     }
@@ -69,4 +77,4 @@ def build_pipeline(pipeline_model: str) -> Pipeline:
 
 
 if __name__ == '__main__':
-    pipeline = build_pipeline('logistic')
+    pipeline = build_pipeline('logisic')

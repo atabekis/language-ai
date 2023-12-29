@@ -14,7 +14,7 @@ from sklearn.model_selection import train_test_split
 from util import log, save_file_to_path
 
 # Reproducibility
-__random_state__ = 5
+__RANDOM_SEED__ = 5
 
 
 class Dataset:
@@ -177,7 +177,7 @@ class Reader:
     def _split_data(self):
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
-            test_size=0.2, random_state=__random_state__)
+            test_size=0.2, random_state=__RANDOM_SEED__)
 
 
 
