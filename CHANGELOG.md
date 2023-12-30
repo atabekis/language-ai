@@ -1,3 +1,17 @@
+### V3.0 - ADD
+ _Ata Bekişoğlu - 30/12/2023_ 
+* Hooray! Version 3!
+* Changes to `neural.py`:
+  * Implemented **Long Short-Term Memory** (LSTM) model under `NeuralNetwork` class.
+  * Changes to the fit method to include more controlled epochs and early stopping.
+  * Implemented the `predict()` method.
+* Changes to `process.py` → Added neural pipelines.
+* Big changes to `reader.py`:
+  * Changed the `Dataset` and `CleanData` classes to read the dataframe instead of the raw csv.
+  * Connected the aforementioned classes to `Reader` in order to have an end-to-end process.
+* Started on the `methods/README.md` for better understanding!
+* TODO: add class method to save (all) classifiers/networks so we don't wait as long in the future!
+
 ### V2.4 - 05d9f77
  _Ata Bekişoğlu - 29/12/2023_
 * Added `neural.py` under _methods_.

@@ -1,6 +1,5 @@
 # Core imports
 import html
-import os.path
 import string
 import pandas as pd
 
@@ -27,9 +26,9 @@ class Dataset:
         1: 'Extroverted'
     }
 
-    def __init__(self, path: str):
-        self.path = path
-        self.df = self.read_data()
+    def __init__(self, dataframe: pd.DataFrame) -> None:
+
+        self.df = dataframe
         self.change_column_names()
 
     def __str__(self):
@@ -39,7 +38,12 @@ class Dataset:
                 f"There are {self.author_count()} unique authors.")
 
     def read_data(self):
-        return pd.read_csv(self.path, engine='pyarrow')  # This reduces the loading time by 60%
+        """
+        Deprecated.
+        :return: None
+        """
+        # return pd.read_csv(self.path, engine='pyarrow')  # This reduces the loading time by 60%
+        return DeprecationWarning
 
     def info(self):
         return self.df.info()
@@ -51,7 +55,7 @@ class Dataset:
         return len(self.df.author_id.unique())
 
     def check_imbalance(self):
-        counts = self.df.extrovert.value_counts()
+        counts = self.df.label.value_counts()
         labelled_counts = {self.helper_labels[0]: counts[0],
                            self.helper_labels[1]: counts[1]}
         return labelled_counts
@@ -65,35 +69,42 @@ class CleanData(Dataset):
     This class is used to clean the Dataset object.
     Use the function run() in order to clean the dataset.
 
+    :param dataframe:
+        Pandas dataframe
+    :param remove_lowercase: bool, optional, default True
+        Whether to remove the lowercase characters
+    :param remove_punctuation: bool, optional, default True
+        Whether to remove punctuation characters
+    :param remove_links: bool, optional, default True
+        Whether to remove hyperlinks
+    :param remove_stopwords: bool, optional, default True
+        Whether to remove stopwords
+    :param lemmatize_words: bool, optional, default True
+        Lemmatize the words
+    :param save_csv: bool, optional, default False
+        Save the csv under the data directory
     """
 
     def __init__(
             self,
-            path: str,
+            dataframe: pd.DataFrame,
             remove_lowercase=True,
             remove_punctuation=True,
             remove_links=True,
             remove_stopwords=True,
             lemmatize_words=True,
-            save_csv=True):
-        """
-        :param path: Points to the string path of the CSV file.
-        :param remove_lowercase: Whether to remove the lowercase characters
-        :param remove_punctuation: Whether to remove punctuation characters
-        :param remove_links: Whether to remove hyperlinks
-        :param remove_stopwords: Whether to remove stopwords
-        :param lemmatize_words: Lemmatize the words
-        """
+            save_csv=False):
 
-        super().__init__(path)
+        super().__init__(dataframe)
         self.remove_lowercase, self.remove_punctuation = remove_lowercase, remove_punctuation
         self.remove_links, self.remove_stopwords = remove_links, remove_stopwords
         self.lemmatize_words = lemmatize_words
-
-        self.out_path = save_file_to_path(self.path, 'cleaned_extrovert.csv')
         self.save_csv = save_csv
+        if save_csv:
+            self.out_path = save_file_to_path('data', 'cleaned_extrovert.csv')
 
     def run(self) -> pd.DataFrame:
+        """Main function to clean the data based on the class parameters"""
         if self.remove_lowercase:
             self.lowercase()
         if self.remove_punctuation:
@@ -110,16 +121,19 @@ class CleanData(Dataset):
             self.save()
         return self.df
 
-    def lowercase(self):
+    def lowercase(self) -> None:
+        """Normalize the text"""
         log('Removing uppercase letters...')
         self.df.post = self.df.post.str.lower()
 
-    def decode(self):
+    def decode(self) -> None:
+        """Decode the html attributes such as escape chars."""
         log('Decoding HTML attributes...')
         self.df.post = self.df.post.apply(lambda x: html.unescape(x))
 
-    def links(self):
+    def links(self) -> NotImplemented:
         """
+        Remove hyperlinks from text
         There exists a total of 7 rows:
             5 of which start with 'https//' -> {12715, 20059, 29577, 35532, 37062}
             2 of which start with 'http//' -> {31107, 31118}
@@ -128,12 +142,14 @@ class CleanData(Dataset):
 
         return NotImplemented
 
-    def punctuation(self):
+    def punctuation(self) -> None:
+        """Removes punctuation from the text"""
         log('Removing punctuation...')
         self.df.post = self.df.post.str.replace(f'[{string.punctuation}]', '')
         self.df.post = self.df.post.str.replace(f'\\', '')
 
-    def stopwords(self):
+    def stopwords(self) -> None:
+        """Remove stopwords using nltk"""
         try:
             log('Removing stopwords...')
             stop_words = set(stopwords.words('english'))
@@ -149,38 +165,73 @@ class CleanData(Dataset):
             nltk.download('stopwords')
             log('Download stopwords successful, please re-run the script')
 
-    def lemmatize(self):
+    def lemmatize(self) -> NotImplemented:
+        """Lemmatize the text, not implemented yet"""
         return NotImplemented
         # log('Lemmaizing text...')
         # log('This will take a while...')
         # self.df.post = parallel_lemmatize(self.df.post)
 
-    def save(self):
+    def save(self) -> None:
+        """if save=True, saves the csv under data/cleaned_extrover.csv"""
         log('Saving cleaned data...')
         self.df.to_csv(self.out_path, index=False)
 
 
 class Reader:
     """
-    This class reads cleaned data
+    Main wrapper around the dataset
+    :param path: str,
+        The path to the uncleaned dataset (csv)
+    :param clean: bool, optional, default=True
+        If true calls CleanData class, for more information check CleanData
+    :param: split: bool, optional, default=True
+        Splits the dataframe using sklean train test split
+    :param show_info: bool, optional, default=True
+        Shows information about the dataset such as: value counts, imbalance and basic properties
     """
-    def __init__(self, path: str):
+
+    def __init__(
+            self,
+            path: str,
+            clean: bool = True,
+            split: bool = True,
+            show_info: bool = True):
+
         self.df = pd.read_csv(path, engine='pyarrow')
+        self.df = Dataset(self.df).df
 
         self.labels = self.df['label']
         self.posts = self.df['post']
 
         self.train = [[], []]  # X_train, y_train
         self.test = [[], []]  # X_test, y_test
-        self._split_data()
 
-    def _split_data(self):
+        if show_info:
+            self.info()
+        if clean:
+            self._clean_data()
+        if split:
+            self._split_data()
+
+    def info(self) -> str:
+        """Instance of Dataset class, represents basic info about the dataset"""
+        return Dataset(self.df).__str__()
+
+    def _clean_data(self) -> pd.DataFrame:
+        """Calls the CleanData class and cleans the dataframe"""
+        log('Cleaning data...')
+        self.df = CleanData(self.df).run()
+        return self.df
+
+    def _split_data(self) -> None:
+        """split the dataframe using train_test_split"""
+        log('Splitting the dataframe into train/test sets...')
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
             test_size=0.2, random_state=__RANDOM_SEED__)
 
 
-
 if __name__ == '__main__':
-    data = Reader('../data/cleaned_extrovert.csv')
-    print(data)
+    data = Reader('../data/extrovert_introvert.csv')
+    print(data.df.head())
