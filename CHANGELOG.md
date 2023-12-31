@@ -1,4 +1,19 @@
-### V3.0 - ADD
+### V3.1 - ADD
+ _Ata Bekişoğlu - 31/12/2023_ 
+* Happy new years! I'm done with coding, and this was the end of the coding part for the project. It truly is a new years miracle.
+* Most changes were done in `process.py`:
+  * added the function `resampler()`which returns a resampling method from the imblearn library.
+  * this then is used by the newly modified `build_pipeline()` to include resamplers.
+* Implemented the class `Experiment`
+  * Final step of the project; reads the data using `Reader`, and passes the data into the pipelines.
+  * In `perform_single_experiment()` we select one model and perform it
+  * In `perform_mant_experiments()` all models available in the `__init__` method are executed.
+  * The metrics of the models are kept and then exported into a latex table
+* Added `config.py` to keep the absolute paths to the data and export directories.
+* Small changes to the notebooks, requirements.txt, and some much needed documentation to functions and classes in `reader.py`.
+
+
+### V3.0 - a9118ad
  _Ata Bekişoğlu - 30/12/2023_ 
 * Hooray! Version 3!
 * Changes to `neural.py`:
@@ -10,7 +25,7 @@
   * Changed the `Dataset` and `CleanData` classes to read the dataframe instead of the raw csv.
   * Connected the aforementioned classes to `Reader` in order to have an end-to-end process.
 * Started on the `methods/README.md` for better understanding!
-* TODO: add class method to save (all) classifiers/networks so we don't wait as long in the future!
+* TODO: add class method to save (all) classifiers/networks, so we don't wait as long in the future!
 
 ### V2.4 - 05d9f77
  _Ata Bekişoğlu - 29/12/2023_

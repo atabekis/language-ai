@@ -77,7 +77,7 @@ Hence, the layers of the LSTM:
         x = Embedding(max_features, embedding_dim)(x)
         x = Reshape((-1, embedding_dim))(x)
         x = LSTM(128, return_sequences=True, dropout=lstm_dropout)(x)
-        x = LSTM(128, return_sequences=True)(x)  # No dropout here?
+        x = LSTM(128, return_sequences=True)(x)  # No dropout here
         x = GlobalMaxPooling1D()(x)
         x = Dense(128, activation="relu")(x)
         x = Dropout(0.5)(x)

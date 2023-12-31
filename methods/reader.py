@@ -7,6 +7,7 @@ import pandas as pd
 import nltk
 from nltk.corpus import stopwords
 
+# Manipulate the dataset
 from sklearn.model_selection import train_test_split
 
 # Local imports
@@ -18,8 +19,8 @@ __RANDOM_SEED__ = 5
 
 class Dataset:
     """
-    Used to explore the dataset.
-    TODO: Add methods & desc.
+    Represents the dataset, performs basic EDA functions
+    :param dataframe: pandas dataframe
     """
     helper_labels = {
         0: 'Introverted',
@@ -27,7 +28,6 @@ class Dataset:
     }
 
     def __init__(self, dataframe: pd.DataFrame) -> None:
-
         self.df = dataframe
         self.change_column_names()
 
@@ -45,22 +45,29 @@ class Dataset:
         # return pd.read_csv(self.path, engine='pyarrow')  # This reduces the loading time by 60%
         return DeprecationWarning
 
-    def info(self):
+    def info(self) -> None:
+        """Info function call from pandas"""
         return self.df.info()
 
-    def head(self, nrows=10):
+    def head(self, nrows: int = 10) -> pd.DataFrame:
+        """
+        returns first n rows of the dataframe
+        """
         return self.df.head(nrows)
 
-    def author_count(self):
+    def author_count(self) -> int:
+        """Total count of the authors in the dataframe"""
         return len(self.df.author_id.unique())
 
-    def check_imbalance(self):
+    def check_imbalance(self) -> dict[int, str]:
+        """Checks the imbalance of the labels/targets"""
         counts = self.df.label.value_counts()
         labelled_counts = {self.helper_labels[0]: counts[0],
                            self.helper_labels[1]: counts[1]}
         return labelled_counts
 
-    def change_column_names(self):
+    def change_column_names(self) -> None:
+        """Changes the misspelled column names in the original dataframe"""
         self.df.rename(columns={'auhtor_ID': 'author_id', 'extrovert': 'label'}, inplace=True)
 
 
@@ -230,6 +237,7 @@ class Reader:
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
             test_size=0.2, random_state=__RANDOM_SEED__)
+
 
 
 if __name__ == '__main__':

@@ -1,6 +1,11 @@
 """Main file for the experiment/process through pipelines"""
+# Python imports
+import time
+from typing import Union
+
 # Importing the pipeline
-from sklearn.pipeline import Pipeline
+# from sklearn.pipeline import Pipeline --> this was breaking with resampling, but i'll keep it here
+from imblearn.pipeline import Pipeline
 
 # Vectorizers
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -11,107 +16,221 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
+# Resampler
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
+from imblearn.under_sampling import RandomUnderSampler, TomekLinks
+
 # Neural imports
 from methods.neural import NeuralNetwork
 
+# For the experiment
+from methods.reader import Reader
 
-# To delete later
-import pandas as pd
-from sklearn.model_selection import train_test_split
+# Util
+from util import log
+from config import __DATA_PATH__, __EXPERIMENTS_PATH__
 
 
-# For passing onto all random states:
 __RANDOM_SEED__ = 5
 
-# Helper for the build_pipeline
-model_keys = ['naive-bayes', 'svm', 'logistic', 'random-forest']
 
-
-def build_pipeline(pipeline_model: str) -> Pipeline:
+def resampler(model: str = 'random-under') -> Union[RandomOverSampler, RandomUnderSampler,
+SMOTE, ADASYN, TomekLinks, None]:
     """
-    Takes the type of pipeline as parameter and returns a sklearn Pipeline.
-    :param pipeline_model: TODO: add the types to docstring
-    :return: sklearn Pipeline
+    Function to select a resampling method based on models from the imbalanced-learn library.
+
+    :param model: str, default 'random-under'
+    :return:
     """
     models = {
-        # Basic models go here: nb, svm, logit, rf
-        'naive-bayes': {
-            'vectorizer': CountVectorizer(
-                ngram_range=(1, 3),
-                binary=True  # TODO: experiment with this statement
-            ),
-            'classifier': MultinomialNB()
-        },
-        'svm': {
-            'vectorizer': TfidfVectorizer(
-                ngram_range=(1, 3),
-                use_idf=True,
-                smooth_idf=True,
-                sublinear_tf=True,  # this is what the lecturer showed us: 1+log(tf)
-            ),
-            'classifier': SVC()
-        },
-        'logistic': {
-            'vectorizer': TfidfVectorizer(
-                ngram_range=(1, 3),
-                use_idf=True,
-                smooth_idf=True,
-                sublinear_tf=True,
-            ),
-            'classifier': LogisticRegression(
-                random_state=__RANDOM_SEED__
-            ),
-        },
-        'random-forest': {
-            'vectorizer': CountVectorizer(
-                ngram_range=(1, 3),
-                binary=True  # TODO: experiment with this statement
-            ),
-            'classifier': RandomForestClassifier(
-                random_state=__RANDOM_SEED__
-            )
-        },
-        'cnn': {
-            'neural': NeuralNetwork(
-                model_type='cnn'
-            )
-        },
-        'lstm': {
-            'neural': NeuralNetwork(
-                model_type='lstm',
-                # epochs=1,  # TODO: DELETE THESE!!
-                # early_stop=True  # ALSO THIS
-            )
-        }
+        'random-over': RandomOverSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'random-under': RandomUnderSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'smote': SMOTE(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'adasyn': ADASYN(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'tomek': TomekLinks(sampling_strategy='auto')
+    }
+    if model:
+        return models.get(model)
+    else:
+        return None
+
+
+def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipeline:
+    """Used to construct a sklearn Pipeline,"""
+
+    log(f'The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
+
+    models = {
+        # Naive Bayes Model wih Bag of Words
+        'naive-bayes': [
+            ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', MultinomialNB())
+        ],
+        # Support Vector Machines with tf*idf
+        'svm': [
+            ('vectorizer', TfidfVectorizer(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', SVC())
+        ],
+        # Logistic Regression with tf*idf
+        'logistic': [
+            ('vectorizer', TfidfVectorizer(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', LogisticRegression(random_state=__RANDOM_SEED__))
+        ],
+        # Random forest model with bag of words
+        'random-forest': [
+            ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__))
+        ],
+
+        # Neural Network models from neural.py
+        # Convolutional Neural Network
+        'cnn': [
+            ('neural', NeuralNetwork(model_type='cnn'))
+        ],
+        # Long-Short Term Memory Model
+        'lstm': [
+            ('neural', NeuralNetwork(model_type='lstm'))
+        ]
     }
 
-    # Select the model using .get -> eval to True/False
-    selected_model = models.get(pipeline_model)
+    selected_model = models.get(model)
     if selected_model:
-        if 'vectorizer' in selected_model and 'classifier' in selected_model:
-            return Pipeline([
-                ('vectorizer', selected_model['vectorizer']),
-                ('classifier', selected_model['classifier'])
-            ])
-        elif 'neural' in selected_model:
-            return Pipeline([
-                ('neural', selected_model['neural'])])
-
-        else:
-            raise KeyError(f"Invalid key: {pipeline_model}. Choose from {list(models.keys())}.")
+        return Pipeline(selected_model)
     else:
-        raise KeyError(f"Invalid key: {pipeline_model}. Choose from {list(models.keys())}.")
+        raise KeyError(f'Invalid key: {model}. Please choose from {list(models.keys())}')
 
 
 class Experiment:
-    pass
+    """
+    Main and (hopefully) last class, this combines all the other object and performs experiment(s). The metrics are
+    computed and exported to be used in the paper.
+
+    :param time_experiments: bool, default=True
+        times each experiment and prints the time it took to complete the task.
+    :param verbose: bool, default=True
+        if True, prints the status of the experiment
+    """
+
+    def __init__(self, time_experiments: bool = True, verbose: bool = True):
+        reader = Reader(__DATA_PATH__,
+                        clean=True,
+                        split=True,
+                        show_info=False)
+
+        self.time_experiments = time_experiments
+        self.verbose = verbose
+
+        self.posts = reader.posts
+        self.labels = reader.labels
+
+        self.X_train, self.y_train = reader.train[0], reader.train[1]
+        self.X_test, self.y_test = reader.test[0], reader.test[1]
+
+        self.resampling_method = 'random-under'
+        """We conducted the experiments and figured that the random-under method would yield the best results"""
+
+        self.models = ['naive-bayes', 'svm', 'logistic', 'random-forest', 'cnn', 'lstm']
+        # ^
+        """ This is passed onto perform_many_experiments, please add/remove from this list in order to conduct a 
+        different experiment"""
+
+        self.model_metrics = []
+
+    def _metrics(self, y_pred: list, y_prob: list = None,
+                 plot: bool = True, pipeline_model: str = None) -> dict[str, float]:
+        """
+        Function to compute various binary classification metrics.
+
+        :param y_pred: array-like
+            predicted labels from the pipeline
+        :param y_prob: array-like, optional (default = None)
+            predicted probabilities
+        :param plot: bool, optional (default = True)
+            whether to plot the ROC curve
+        :param pipeline_model: str, optional (default = None)
+            used for the title of the roc plot
+
+        :return:
+            dictionary containing computed metrics
+        """
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+        from sklearn.metrics import roc_auc_score, roc_curve, auc
+        import matplotlib.pyplot as plt
+
+        metrics_dict = {
+            'model': pipeline_model,
+            'accuracy': accuracy_score(self.y_test, y_pred),
+            'precision': precision_score(self.y_test, y_pred), 'recall': recall_score(self.y_test, y_pred),
+            'f1_score': f1_score(self.y_test, y_pred)}
+
+        # ROC-AUC
+        if y_prob is not None:
+            metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_prob)
+
+            # ROC Curve
+            if plot:
+                fpr, tpr, _ = roc_curve(self.y_test, y_prob)
+                roc_auc = auc(fpr, tpr)
+
+                plt.figure()
+                plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.2f)' % roc_auc)
+                plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+                plt.xlabel('False Positive Rate')
+                plt.ylabel('True Positive Rate')
+                plt.title(f'ROC Curve for "{pipeline_model}"')
+                plt.legend(loc='lower right')
+                plt.show()
+
+        # Round of the numbers to their 2nd decimal place in an elegant way :)
+        metrics_dict = {metric: format(value, '.2f') for metric, value in metrics_dict.items()}
+
+        return metrics_dict
+
+    def perform_single_experiment(self, pipeline_model: str) -> dict[str, float]:
+        """Performs a single experiment based on the given pipeline and resampling method
+        :param pipeline_model: str,
+            to be passed onto the build_pipeline() function, which returns a Pipe
+        """
+        # Start timing
+        start_time = time.time()
+        # We build the pipeline
+        pipeline = build_pipeline(pipeline_model, resampling_method=self.resampling_method)
+
+        pipeline.fit(self.X_train, self.y_train)  # Fit the model
+        y_pred, y_prob = pipeline.predict(self.X_test), pipeline.predict_proba(self.X_test)[:, 1]
+        # End timing
+        end_time = time.time()
+
+        if self.time_experiments:  # from init
+            log(f'Experiment "{pipeline_model}" took {end_time-start_time:.2f} seconds.')
+
+        metrics = self._metrics(y_pred, y_prob, plot=True, pipeline_model=pipeline_model)
+        # self.model_metrics.append(metrics)
+        if self.verbose:  # again, from init
+            print(metrics)
+        return metrics
+
+    def perform_many_experiments(self) -> None:
+        """Calls the perform_single_experiment with all models in self.models. Appends to the final list of metrics"""
+        for model in self.models:
+            metrics = self.perform_single_experiment(pipeline_model=model)
+            self.model_metrics.append(metrics)
+        self._export()
+
+    def _export(self):
+        """Takes the finalized model metrics and exports it as .tex table"""
+        import pandas as pd
+        dataframe = pd.DataFrame(self.model_metrics)
+        dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments.tex', index=False)
+        log('Successfully saved "many_experiments.tex"')
 
 
 if __name__ == '__main__':
-    pipeline = build_pipeline('lstm')
-    df = pd.read_csv('../data/cleaned_extrovert.csv', engine='pyarrow')
-    x_train, x_test, y_train, y_test = train_test_split(df['post'], df['label'],
-                                                        test_size=0.2, random_state=__RANDOM_SEED__)
-    pipeline.fit(x_train, y_train)
-    y_pred = pipeline.predict(x_test)
-
+    experiment = Experiment(
+        time_experiments=True,
+        verbose=True)
+    experiment.perform_many_experiments()

@@ -1,9 +1,9 @@
 """Neural network models: CNN"""
 # Python imports & setting the backend
 import os;
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3';
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 import numpy as np
 
 # Neural imports
@@ -19,9 +19,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 # Util
 from util import log
-
-
-from tensorflow.python.client import device_lib
 
 
 class NeuralNetwork(BaseEstimator, TransformerMixin):
@@ -56,6 +53,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         """Initialize the basic control parameters of the neural network"""
 
         self.model_type = model_type
+
         self.max_features = max_features
         self.embedding_dim = embedding_dim
         self.sequence_length = sequence_length
@@ -117,7 +115,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         out_layer = Dense(1, activation="sigmoid", name="predictions")(x)
         return Model(text_input, out_layer)
 
-    def fit(self, X: list, y=None):
+    def fit(self, X: list, y=None):  # -> NeuralNetwork
         """Fit the models based on the model type
         Returns: NeuralNetwork
         """
@@ -139,7 +137,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X: list):
-        """TODO: change this method"""
+        """Based on sklearn API"""
         return self.model.predict(X)
 
     def predict(self, X: list) -> list:
