@@ -89,3 +89,30 @@ Hence, the layers of the LSTM:
 #### Early Stopping
 Setting `early_stop=True` will result in the network automatically stopping if there's no improvement over the loss.
 
+## Process
+`process.py`
+This is the final .py file of the project where everything comes together to conduct the experiments.
+### Objects
+The `Experiment` class:
+* This class conducts the experiments using two functions `perform_single_experiment()` and `perform_many_experiments()`.
+* The function `build_pipeline` is called to create a [sklearn pipeline](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html):
+```python
+# Example pipeline model in the build_pipeline function
+'naive-bayes': [
+            ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', MultinomialNB())]
+```
+* The function `resampler` returns a resampling method implemented from the [imbalanced-learn](https://imbalanced-learn.org/stable/index.html) library.
+```python
+ models = {
+        'random-over': RandomOverSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'random-under': RandomUnderSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'smote': SMOTE(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'adasyn': ADASYN(sampling_strategy='auto', random_state=__RANDOM_SEED__),
+        'tomek': TomekLinks(sampling_strategy='auto')
+    }
+```
+* The pipeline is fitted withing the class methods and then the metrics are extracted from the predicted and real values on the split data.
+* The metrics of each classifier & network are saved as a .tex file under `output`
+* TODO: add table → findings

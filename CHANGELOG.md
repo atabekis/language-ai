@@ -1,4 +1,4 @@
-### V3.1 - ADD
+### V3.1 - e1c2c75
  _Ata Bekişoğlu - 31/12/2023_ 
 * Happy new years! I'm done with coding, and this was the end of the coding part for the project. It truly is a new years miracle.
 * Most changes were done in `process.py`:

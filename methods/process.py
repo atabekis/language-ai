@@ -57,7 +57,7 @@ SMOTE, ADASYN, TomekLinks, None]:
 
 def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipeline:
     """Used to construct a sklearn Pipeline,"""
-
+    print('\n')  # To separate the cleaning output from the model outputs
     log(f'The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
 
     models = {
@@ -186,7 +186,7 @@ class Experiment:
                 plt.show()
 
         # Round of the numbers to their 2nd decimal place in an elegant way :)
-        metrics_dict = {metric: format(value, '.2f') for metric, value in metrics_dict.items()}
+        metrics_dict = {metric: format(value, '.2f') for metric, value in metrics_dict.items() if isinstance(value, float)}
 
         return metrics_dict
 
@@ -209,7 +209,7 @@ class Experiment:
             log(f'Experiment "{pipeline_model}" took {end_time-start_time:.2f} seconds.')
 
         metrics = self._metrics(y_pred, y_prob, plot=True, pipeline_model=pipeline_model)
-        # self.model_metrics.append(metrics)
+        self.model_metrics.append(metrics)  # Add to the class list of metrics
         if self.verbose:  # again, from init
             print(metrics)
         return metrics
@@ -217,9 +217,8 @@ class Experiment:
     def perform_many_experiments(self) -> None:
         """Calls the perform_single_experiment with all models in self.models. Appends to the final list of metrics"""
         for model in self.models:
-            metrics = self.perform_single_experiment(pipeline_model=model)
-            self.model_metrics.append(metrics)
-        self._export()
+            self.perform_single_experiment(pipeline_model=model)
+        self._export()  # Save the data for the paper
 
     def _export(self):
         """Takes the finalized model metrics and exports it as .tex table"""
