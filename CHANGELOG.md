@@ -27,6 +27,14 @@
 * Started on the `methods/README.md` for better understanding!
 * TODO: add class method to save (all) classifiers/networks, so we don't wait as long in the future!
 
+_Emre Sarp Kamal - 30/12/2023_
+* Done with working towards the imbalanced dataset problem:
+  * Worked in a separate notebook called SMOTE_test (implement this as .py file to PyCharm later and change name) as PyCharm kept giving errors in every possible step:
+  * Researched quite a bit and implemented SMOTE, did not work out as intended. Didn't see the expected results, started looking into other methods.
+  * Worked with `stratify` in train_test_split, seemed to work out better
+  * Implemented TfidfVectorizer as a simple tokenizer and used Naive Bayes as classifier to compare measurements with and without stratify
+  * Found out about `StratifiedShuffleSplit` after research, also used it with the same tokenizer and classifier for comparison
+  * Only thing left is to implement these to our project to talk in the paper
 ### V2.4 - 05d9f77
  _Ata Bekişoğlu - 29/12/2023_
 * Added `neural.py` under _methods_.
@@ -53,6 +61,12 @@
   * Logistic regression on the different vecorizers
   * **IMPORTANT: found something called sklearn.pipeline** this is big news since it makes the code like 90% shorter and more readable lol.
   * Checking the SMOTE technique for imbalanced data - didn't understand a lot, goes in the backburner.
+
+_Emre Sarp Kamal - 25/12/2023_
+* After some previous research on fastText created a separate branch emretest:
+  * created emre_testing by copying ata_testing to make separate changes
+  * worked on fastText kept getting errors trying to install it
+  * data is imbalanced will work towards finding a solution to this instead, working on emre_testing looking into SMOTE
 ### V2.1 - f105d5b
  _Ata Bekişoğlu - 19/12/2023_
 * This commit includes the vectorization and some new exploratory code
@@ -94,7 +108,11 @@
   * spent quite some time installing fastText, some basic modelling with fastText
   * Added BACKLOG.md for keeping track of TODOs
 
+_Emre Sarp Kamal - 07/12/2023_
+* Learning and trying out spaCy, did tokenization on a subset of the data in a separate notebook
 ### V1.1 - 0c78fea
  _Ata Bekişoğlu - 05/12/2023_ 
 * First commit, checking the dataset through explore.ipynb
 
+_Emre Sarp Kamal - 06/12/2023_
+* Loaded dataset and did exploration
