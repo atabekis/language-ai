@@ -7,16 +7,18 @@ Aadersh Kalyanasundaram, Ata Bekişoğlu, Egehan Kabacaoğlu, Emre Kamal
 If the code doesn't run when cloning from GitHub, the data folder is assumed to be missing.
 """
 
-# Python imports
-import os
 
-# Local imports
-from methods.reader import CleanData
-
-__FILE_PATH__ = os.path.join(os.path.dirname(__file__), 'data', 'extrovert_introvert.csv')
+from methods.process import Experiment
 
 
+def main():
+    """Main function to run the experiment."""
+    experiment = Experiment(
+        time_experiments=True,
+        verbose=True)
+    experiment.perform_many_experiments()
+    # experiment.perform_single_experiment(pipeline_model='svm')
 
 
 if __name__ == '__main__':
-    pass
+    main()

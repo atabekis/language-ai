@@ -1,6 +1,7 @@
 """Neural network models: CNN"""
 # Python imports & setting the backend
 import os;
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3';
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -49,6 +50,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
                  embedding_dim: int = 128,
                  sequence_length: int = 500,
                  epochs: int = 3,
+                 batch_size: int = 50,
                  early_stop: bool = False) -> None:
         """Initialize the basic control parameters of the neural network"""
 
@@ -58,15 +60,19 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         self.embedding_dim = embedding_dim
         self.sequence_length = sequence_length
         self.epochs = epochs
+        self.batch_size = batch_size
+        self.early_stop = early_stop  # Bool statement to control self.callback -> passed onto model.fit
+
         self.model = None
         self.history = None  # It's nice to keep this if we want to plot loss/AUC/accuracy over epochs
-        self.early_stop = early_stop  # Bool statement to control self.callback -> passed onto model.fit
         self.callback = None  # ^TODO: add:: when debug -> early_stop=True
 
         self.vectorizer = TextVectorization(  # This is to make sure our vectors are padded and properly vectorized
             max_tokens=self.max_features,
             output_mode='int',
             output_sequence_length=self.sequence_length)
+
+        self.predictions = None  # Testing - to remove later
 
     def cnn(self, max_features: int, embedding_dim: int) -> keras.Model:
         """Representation of a Convolutional Neural Network.
@@ -75,7 +81,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             Implementation from:
             https://keras.io/examples/nlp/text_classification_from_scratch/
         """
-        log('Running Neural: Convolutional Neural Network')
+        log('Fitting the Neural Network: Convolutional Neural Network')
         text_input = Input(shape=(1,), dtype=tf.string, name='text')
         x = self.vectorizer(text_input)  # We vectorize the text here
 
@@ -98,7 +104,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             https://medium.com/mlearning-ai/the-classification-of-text-messages-using-lstm-bi-lstm-and-gru-f79b207f90ad
             https://www.analyticsvidhya.com/blog/2021/06/lstm-for-text-classification/
         """
-        log('Running Neural: Long Short-Term Memory Network')
+        log('Fitting the Neural Network: Long Short-Term Memory Network')
 
         text_input = Input(shape=(1,), dtype=tf.string, name='text')
         x = self.vectorizer(text_input)
@@ -126,19 +132,26 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
 
         fit_model = models.get(self.model_type)  # Using .get does not throw an error when wrong model (english????)
         if fit_model:
-            self.vectorizer.adapt(X)
+            self.vectorizer.adapt(X)  # Vectorizer needs to be initialized
             self.model = fit_model(self.max_features, self.embedding_dim)
 
-        if self.early_stop:
-            self.callback = [EarlyStopping(monitor='loss', patience=1)]
+        if self.early_stop:  # Early stop control
+            split_index = int(len(X) * 0.8)  # The following two lines are used to split the current X into validation
+            X_val, y_val = np.array(X[:split_index]), np.array(y[:split_index])
+            validation_data = np.array(X_val[-split_index:]), np.array(y_val[-split_index:])
+            self.callback = [EarlyStopping(monitor='val_loss', patience=1)]
 
         self.model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy", keras.metrics.AUC], )
-        self.history = self.model.fit(X, y, epochs=self.epochs, callbacks=self.callback)
+        self.history = self.model.fit(X, y,
+                                      epochs=self.epochs,
+                                      batch_size=self.batch_size,
+                                      validation_data=validation_data if self.early_stop else None,
+                                      callbacks=[self.callback] if self.early_stop else None)
         return self
 
-    def transform(self, X: list):
-        """Based on sklearn API"""
-        return self.model.predict(X)
+    # def predict(self, X: list):
+    #     """Based on sklearn API"""
+    #     return self.model.predict(X)  # Store later for predict proba
 
     def predict(self, X: list) -> list:
         """Predict using the trained model
@@ -146,7 +159,9 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             Implementation also from
             https://github.com/cmry/amica/blob/master/neural.py#L228
         """
-        y_hat = np.argmax(self.model.predict(X), axis=1)
-        return [str(int(y_i)) for y_i in y_hat]  # Mr. Emmery's implementation
-        # y_hat = self.model.predict(X)
-        # return (y_hat > 0.5).astype(int)  # My implementation
+        # y_hat = np.argmax(self.model.predict(X), axis=1)
+        # return [int(y_i) for y_i in y_hat]  # Mr. Emmery's implementation
+        # prob = np.reshape(pred, (-1, 2))
+        # return prob
+        y_hat = self.model.predict(X)
+        return (y_hat > 0.5).astype(int)  # My implementation

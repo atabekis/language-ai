@@ -4,14 +4,15 @@ import time
 from typing import Union
 
 # Importing the pipeline
-# from sklearn.pipeline import Pipeline --> this was breaking with resampling, but i'll keep it here
+# from sklearn.pipeline import Pipeline --> this was breaking with resampling, but i'll keep it here jic
 from imblearn.pipeline import Pipeline
 
 # Vectorizers
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from util import TfidfVectorizerTQDM
 
 # Classifiers
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -57,7 +58,7 @@ SMOTE, ADASYN, TomekLinks, None]:
 
 def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipeline:
     """Used to construct a sklearn Pipeline,"""
-    print('\n')  # To separate the cleaning output from the model outputs
+    # print('\n')  # To separate the cleaning output from the model outputs
     log(f'The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
 
     models = {
@@ -69,9 +70,10 @@ def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipel
         ],
         # Support Vector Machines with tf*idf
         'svm': [
-            ('vectorizer', TfidfVectorizer(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
-            ('classifier', SVC())
+            # ('classifier', SVC())
+            ('classifier', LinearSVC())
         ],
         # Logistic Regression with tf*idf
         'logistic': [
@@ -89,13 +91,17 @@ def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipel
         # Neural Network models from neural.py
         # Convolutional Neural Network
         'cnn': [
-            ('neural', NeuralNetwork(model_type='cnn'))
+            ('neural', NeuralNetwork(model_type='cnn',
+                                     epochs=1,
+                                     early_stop=True))
         ],
         # Long-Short Term Memory Model
         'lstm': [
             ('neural', NeuralNetwork(model_type='lstm'))
         ]
     }
+    # TODO: There are a few steps i can take to optimize the process and we don't use word
+    # ^embeddings. Check out: https://chat.openai.com/c/07776441-c2e6-46bd-9b84-9811ecc9c101
 
     selected_model = models.get(model)
     if selected_model:
@@ -113,6 +119,7 @@ class Experiment:
         times each experiment and prints the time it took to complete the task.
     :param verbose: bool, default=True
         if True, prints the status of the experiment
+    TODO: Add cross validation
     """
 
     def __init__(self, time_experiments: bool = True, verbose: bool = True):
@@ -167,6 +174,7 @@ class Experiment:
             'precision': precision_score(self.y_test, y_pred), 'recall': recall_score(self.y_test, y_pred),
             'f1_score': f1_score(self.y_test, y_pred)}
 
+
         # ROC-AUC
         if y_prob is not None:
             metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_prob)
@@ -184,9 +192,12 @@ class Experiment:
                 plt.title(f'ROC Curve for "{pipeline_model}"')
                 plt.legend(loc='lower right')
                 plt.show()
+        else:
+            metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_pred)
 
         # Round of the numbers to their 2nd decimal place in an elegant way :)
-        metrics_dict = {metric: format(value, '.2f') for metric, value in metrics_dict.items() if isinstance(value, float)}
+        metrics_dict = {metric: format(value, '.2f') for metric, value
+                        in metrics_dict.items() if isinstance(value, float)}
 
         return metrics_dict
 
@@ -201,7 +212,12 @@ class Experiment:
         pipeline = build_pipeline(pipeline_model, resampling_method=self.resampling_method)
 
         pipeline.fit(self.X_train, self.y_train)  # Fit the model
-        y_pred, y_prob = pipeline.predict(self.X_test), pipeline.predict_proba(self.X_test)[:, 1]
+        # if not pipeline_model == 'cnn' or pipeline_model == 'lstm':
+        #     y_pred, y_prob = pipeline.predict(self.X_test), pipeline.predict_proba(self.X_test)[:, 1]
+        # else:
+        y_pred, y_prob = pipeline.predict(self.X_test), None
+
+        # TODO: SAve the pipelines using joblib
         # End timing
         end_time = time.time()
 
