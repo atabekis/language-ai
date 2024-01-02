@@ -94,11 +94,15 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
         # Neural Network models from neural.py
         # Convolutional Neural Network
         'cnn': [
-            ('neural', NeuralNetwork(model_type='cnn'))
+            ('neural', NeuralNetwork(model_type='cnn',
+                                     epochs=10,
+                                     early_stop=True))
         ],
         # Long-Short Term Memory Model
         'lstm': [
-            ('neural', NeuralNetwork(model_type='lstm'))
+            ('neural', NeuralNetwork(model_type='lstm',
+                                     epochs=10,
+                                     early_stop=True))
         ]
     }
     # TODO: There are a few steps i can take to optimize the process and we don't use word
