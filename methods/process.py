@@ -1,5 +1,6 @@
 """Main file for the experiment/process through pipelines"""
 # Python imports
+import os
 import time
 from typing import Union
 
@@ -9,7 +10,7 @@ from imblearn.pipeline import Pipeline
 
 # Vectorizers
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from util import TfidfVectorizerTQDM
+from util import TfidfVectorizerTQDM  # Custom vectorizer with a nice progress bar...
 
 # Classifiers
 from sklearn.svm import SVC, LinearSVC
@@ -27,16 +28,18 @@ from methods.neural import NeuralNetwork
 # For the experiment
 from methods.reader import Reader
 
+# To save the experiments
+from joblib import dump, load
+
 # Util
 from util import log
-from config import __DATA_PATH__, __EXPERIMENTS_PATH__
-
+from config import __DATA_PATH__, __EXPERIMENTS_PATH__, __PIPELINES_PATH__
 
 __RANDOM_SEED__ = 5
 
 
 def resampler(model: str = 'random-under') -> Union[RandomOverSampler, RandomUnderSampler,
-SMOTE, ADASYN, TomekLinks, None]:
+                                                    SMOTE, ADASYN, TomekLinks, None]:
     """
     Function to select a resampling method based on models from the imbalanced-learn library.
 
@@ -56,7 +59,7 @@ SMOTE, ADASYN, TomekLinks, None]:
         return None
 
 
-def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipeline:
+def build_pipeline(model: str, resampling_method: str = 'random-under', verbose: bool = True) -> Pipeline:
     """Used to construct a sklearn Pipeline,"""
     # print('\n')  # To separate the cleaning output from the model outputs
     log(f'The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
@@ -73,27 +76,25 @@ def build_pipeline(model: str, resampling_method: str = 'random-under') -> Pipel
             ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
             # ('classifier', SVC())
-            ('classifier', LinearSVC())
+            ('classifier', LinearSVC(dual='auto', verbose=verbose))
         ],
         # Logistic Regression with tf*idf
         'logistic': [
-            ('vectorizer', TfidfVectorizer(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
-            ('classifier', LogisticRegression(random_state=__RANDOM_SEED__))
+            ('classifier', LogisticRegression(random_state=__RANDOM_SEED__, verbose=verbose))
         ],
         # Random forest model with bag of words
         'random-forest': [
             ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
             ('resampler', resampler(model=resampling_method)),
-            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__))
+            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__, verbose=verbose))
         ],
 
         # Neural Network models from neural.py
         # Convolutional Neural Network
         'cnn': [
-            ('neural', NeuralNetwork(model_type='cnn',
-                                     epochs=1,
-                                     early_stop=True))
+            ('neural', NeuralNetwork(model_type='cnn'))
         ],
         # Long-Short Term Memory Model
         'lstm': [
@@ -174,7 +175,6 @@ class Experiment:
             'precision': precision_score(self.y_test, y_pred), 'recall': recall_score(self.y_test, y_pred),
             'f1_score': f1_score(self.y_test, y_pred)}
 
-
         # ROC-AUC
         if y_prob is not None:
             metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_prob)
@@ -201,39 +201,60 @@ class Experiment:
 
         return metrics_dict
 
-    def perform_single_experiment(self, pipeline_model: str) -> dict[str, float]:
+    def perform_single_experiment(self, pipeline_model: str,
+                                  return_pipe: bool = False,
+                                  save_pipe: bool = False) -> Union[dict[str, float], Pipeline]:
         """Performs a single experiment based on the given pipeline and resampling method
         :param pipeline_model: str,
             to be passed onto the build_pipeline() function, which returns a Pipe
+        :param return_pipe: bool, default False,
+            if true, only returns the pipeline -> this is used in the evaluation
+        :param save_pipe: bool, default False
         """
-        # Start timing
-        start_time = time.time()
-        # We build the pipeline
-        pipeline = build_pipeline(pipeline_model, resampling_method=self.resampling_method)
+        # Check if the pipeline is already saved on local, if not perform the experiment
+        dont_save_if_loaded = None
+        pipeline_path = f'methods/pipelines/{pipeline_model}_{self.resampling_method}_pipeline.joblib'
 
-        pipeline.fit(self.X_train, self.y_train)  # Fit the model
-        # if not pipeline_model == 'cnn' or pipeline_model == 'lstm':
-        #     y_pred, y_prob = pipeline.predict(self.X_test), pipeline.predict_proba(self.X_test)[:, 1]
-        # else:
+        if os.path.exists(pipeline_path):
+            log(f'Existing pipeline found, loading "{pipeline_model}"')
+            pipeline = load(pipeline_path)
+            dont_save_if_loaded = True
+        else:
+            # Start timing
+            start_time = time.time()
+            # We build the pipeline
+            pipeline = build_pipeline(pipeline_model, resampling_method=self.resampling_method)
+
+            pipeline.fit(self.X_train, self.y_train)  # Fit the model
+
+            end_time = time.time()  # End timing
+
+            if self.time_experiments:  # from init
+                log(f'Experiment "{pipeline_model}" took {end_time - start_time:.2f} seconds.')
+
+            if save_pipe:
+                if pipeline_model == 'cnn' or pipeline_model == 'lstm':
+                    pass
+                else:
+                    log(f'Saving the pipeline "{pipeline_model}"')
+                    dump(pipeline, pipeline_path)
+                    log(f'Successfully saved the pipeline "{pipeline_model}"')
+
+        if return_pipe:
+            return pipeline
+
         y_pred, y_prob = pipeline.predict(self.X_test), None
-
-        # TODO: SAve the pipelines using joblib
-        # End timing
-        end_time = time.time()
-
-        if self.time_experiments:  # from init
-            log(f'Experiment "{pipeline_model}" took {end_time-start_time:.2f} seconds.')
 
         metrics = self._metrics(y_pred, y_prob, plot=True, pipeline_model=pipeline_model)
         self.model_metrics.append(metrics)  # Add to the class list of metrics
-        if self.verbose:  # again, from init
+        if self.verbose:  # also, from init
             print(metrics)
         return metrics
 
-    def perform_many_experiments(self) -> None:
+    def perform_many_experiments(self, save_pipes: bool = False) -> None:
         """Calls the perform_single_experiment with all models in self.models. Appends to the final list of metrics"""
         for model in self.models:
-            self.perform_single_experiment(pipeline_model=model)
+            self.perform_single_experiment(pipeline_model=model, save_pipe=save_pipes)
         self._export()  # Save the data for the paper
 
     def _export(self):

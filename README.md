@@ -1,10 +1,5 @@
 # language-ai
 
-
-## Reproducibility
-Notes:
-* latest version of keras does not include keras.preprocessing.text
-  * pip install Keras-Preprocessing
  
 
 **This is the ideal README file that is wanted from us in this assignment, try to cover all topics here:**

@@ -74,6 +74,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
 
         self.predictions = None  # Testing - to remove later
 
+
     def cnn(self, max_features: int, embedding_dim: int) -> keras.Model:
         """Representation of a Convolutional Neural Network.
 
@@ -147,6 +148,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
                                       batch_size=self.batch_size,
                                       validation_data=validation_data if self.early_stop else None,
                                       callbacks=[self.callback] if self.early_stop else None)
+
         return self
 
     # def predict(self, X: list):
@@ -165,3 +167,5 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         # return prob
         y_hat = self.model.predict(X)
         return (y_hat > 0.5).astype(int)  # My implementation
+
+

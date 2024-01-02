@@ -2,10 +2,11 @@
 import os
 from datetime import datetime
 
-# Metrics
-from sklearn.feature_extraction.text import TfidfVectorizer
+# Updating classes to have progress bars!
+from tqdm import tqdm
+from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.base import TransformerMixin
-
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 def log(*args, **kwargs):
@@ -30,11 +31,13 @@ def save_file_to_path(path: str, filename: str) -> os.path:
 
 # Progress bar / visualizations
 class TfidfVectorizerTQDM(TransformerMixin):
+    """Wrapper class around the TfidfVectorizer class to include a progress bar"""
+
     def __init__(self, *args, **kwargs):
         self.tfidf_vectorizer = TfidfVectorizer(*args, **kwargs)
 
     def fit(self, X, y=None):
-        from tqdm import tqdm
+        """manipulating the sklearn vectorizer to include a pbar"""
         pbar = tqdm(total=len(X), desc='Vectorizing documents using: tf*idf')
 
         def wrapped_data():
@@ -48,9 +51,6 @@ class TfidfVectorizerTQDM(TransformerMixin):
 
     def transform(self, X, y=None):
         return self.tfidf_vectorizer.transform(X)
-
-
-
 
 
 
