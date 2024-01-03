@@ -7,7 +7,6 @@ Aadersh Kalyanasundaram, Ata Bekişoğlu, Egehan Kabacaoğlu, Emre Kamal
 If the code doesn't run when cloning from GitHub, the data folder is assumed to be missing.
 """
 
-
 from methods.process import Experiment
 
 
@@ -20,6 +19,16 @@ def main():
     experiment = Experiment(
         time_experiments=True,
         verbose=True)
+    # Comment models in order to exclude from the experiment...
+    experiment.models = [
+        'naive-bayes',
+        'svm',
+        'logistic',
+        'random-forest',
+        # Neural
+        'cnn',
+        'lstm'
+    ]
     experiment.perform_many_experiments(save_pipes=True)
     # experiment.perform_single_experiment(pipeline_model='svm', save_pipe=True)
 

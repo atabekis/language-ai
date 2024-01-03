@@ -76,19 +76,19 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
             ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
             # ('classifier', SVC())
-            ('classifier', LinearSVC(dual='auto', verbose=verbose))
+            ('classifier', LinearSVC(dual='auto'))
         ],
         # Logistic Regression with tf*idf
         'logistic': [
             ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
-            ('classifier', LogisticRegression(random_state=__RANDOM_SEED__, verbose=verbose))
+            ('classifier', LogisticRegression(random_state=__RANDOM_SEED__))
         ],
         # Random forest model with bag of words
         'random-forest': [
             ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
             ('resampler', resampler(model=resampling_method)),
-            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__, verbose=verbose))
+            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__))
         ],
 
         # Neural Network models from neural.py
@@ -110,7 +110,7 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
 
     selected_model = models.get(model)
     if selected_model:
-        return Pipeline(selected_model)
+        return Pipeline(selected_model, verbose=verbose)
     else:
         raise KeyError(f'Invalid key: {model}. Please choose from {list(models.keys())}')
 
