@@ -1,3 +1,16 @@
+### V3.2 - ADD
+ _Ata Bekişoğlu - 03/01/2024_ 
+
+* It was indeed not the end of the coding part... Some big changes:
+* Changes to `process.py`:
+  * Added the Word2Vec model that is built in the new `models.py` file. I still have some issues making it work with the resampling methods.
+  * Added the method to save the pipelines `save_pipe=True` that saves the pipes under the _pipelines_ directory
+* Added the `evaluate.py` and `evaluate.ipynb`, for now they're the same thing. And i have to decide on which one to keep in the future.
+  * This is used to extract information about the coefficients and selection process of the sklearn classifiers. Some very nice findings found here → im going to list them in a README somewhere.
+* Added the `tune_models.py` file with the class `Tuner`:
+  * Uses k-fold cross validation on the pipelines to extract the best hyperparameters for the models.
+
+
 ### V3.1 - e1c2c75
  _Ata Bekişoğlu - 31/12/2023_ 
 * Happy new years! I'm done with coding, and this was the end of the coding part for the project. It truly is a new years miracle.

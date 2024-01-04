@@ -1,9 +1,11 @@
 """Neural network models: CNN"""
 # Python imports & setting the backend
-import os;
+import os
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3';
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # I have to force my GPU at location 0
+# Turns out my GPU (MX230 is cannot be cuda enabled so keep in mind LSTM might take a bit)
 
 import numpy as np
 
@@ -11,9 +13,10 @@ import numpy as np
 import keras
 import tensorflow as tf  # This is just for tf.string on line 58, can be changed if there's any other option
 from keras import Model, Input
+from keras.models import Sequential
 from keras.callbacks import EarlyStopping
 from keras.layers import TextVectorization
-from keras.layers import Embedding, Dropout, Conv1D, GlobalMaxPooling1D, Dense, LSTM, Reshape
+from keras.layers import Embedding, Dropout, Conv1D, GlobalMaxPooling1D, Dense, LSTM, Reshape, GRU
 
 # We need to inherit BaseEstimator and TransformerMixin in order to use the class in a Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -36,7 +39,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         Length of the sequences in the input data
     :param epochs: int, optional, default: 3
         Number of epochs to run the model
-    :param early_stop: bool, optional, default: False
+    :param early_stop: bool, optional, default: True
         Stop the training if the model has stopped improving.
     Notes:
     -----
@@ -51,8 +54,10 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
                  sequence_length: int = 500,
                  epochs: int = 3,
                  batch_size: int = 50,
-                 early_stop: bool = False) -> None:
+                 early_stop: bool = True) -> None:
         """Initialize the basic control parameters of the neural network"""
+
+        self.device = None
 
         self.model_type = model_type
 
@@ -74,7 +79,6 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
 
         self.predictions = None  # Testing - to remove later
 
-
     def cnn(self, max_features: int, embedding_dim: int) -> keras.Model:
         """Representation of a Convolutional Neural Network.
 
@@ -82,7 +86,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             Implementation from:
             https://keras.io/examples/nlp/text_classification_from_scratch/
         """
-        log('Fitting the Neural Network: Convolutional Neural Network')
+        log('[Neural] Fitting the Neural Network: Convolutional Neural Network')
         text_input = Input(shape=(1,), dtype=tf.string, name='text')
         x = self.vectorizer(text_input)  # We vectorize the text here
 
@@ -105,7 +109,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             https://medium.com/mlearning-ai/the-classification-of-text-messages-using-lstm-bi-lstm-and-gru-f79b207f90ad
             https://www.analyticsvidhya.com/blog/2021/06/lstm-for-text-classification/
         """
-        log('Fitting the Neural Network: Long Short-Term Memory Network')
+        log('[Neural] Fitting the Neural Network: Long Short-Term Memory Network')
 
         text_input = Input(shape=(1,), dtype=tf.string, name='text')
         x = self.vectorizer(text_input)
@@ -114,9 +118,24 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         x = Embedding(max_features, embedding_dim)(x)
         x = Reshape((-1, embedding_dim))(x)
         x = LSTM(128, return_sequences=True, dropout=lstm_dropout)(x)
-        x = LSTM(128, return_sequences=True)(x)  # No dropout here?
+        x = LSTM(128, return_sequences=True)(x)  # No dropout here
         x = GlobalMaxPooling1D()(x)
         x = Dense(128, activation="relu")(x)
+        x = Dropout(0.5)(x)
+
+        out_layer = Dense(1, activation="sigmoid", name="predictions")(x)
+        return Model(text_input, out_layer)
+
+    def gru(self, max_features: int, embedding_dim: int, gru_units: int = 128) -> keras.Model:
+        """Representing a Gated Recurrent Unit (GRU) Network"""
+        log('[Neural] Fitting the Neural Network: Gated Recurrent Unit (GRU) Network')
+        text_input = Input(shape=(1,), dtype=tf.string, name='text')
+        x = self.vectorizer(text_input)
+
+        #  Network structure here:
+        x = Embedding(max_features, embedding_dim)(x)
+        x = GRU(gru_units, activation='tanh', dropout=0.2, recurrent_dropout=0.2)(x)
+        x = Dense(gru_units, activation="relu")(x)
         x = Dropout(0.5)(x)
 
         out_layer = Dense(1, activation="sigmoid", name="predictions")(x)
@@ -126,9 +145,21 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         """Fit the models based on the model type
         Returns: NeuralNetwork
         """
+
+        gpus = tf.config.list_physical_devices('GPU')
+
+        if gpus:
+            log("[Neural] CUDA is available. Using GPU.")
+            self.device = "/GPU:0"
+            tf.config.experimental.set_memory_growth(gpus[0], True)  # Allow GPU memory growth
+        else:
+            log("[Neural] CUDA is not available. Training will be performed on CPU.")
+            self.device = "/CPU:0"
+
         models = {
             'cnn': self.cnn,
-            'lstm': self.lstm
+            'lstm': self.lstm,
+            'gru': self.gru
         }
 
         fit_model = models.get(self.model_type)  # Using .get does not throw an error when wrong model (english????)
@@ -140,16 +171,17 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
             split_index = int(len(X) * 0.8)  # The following two lines are used to split the current X into validation
             X_val, y_val = np.array(X[:split_index]), np.array(y[:split_index])
             validation_data = np.array(X_val[-split_index:]), np.array(y_val[-split_index:])
-            self.callback = [EarlyStopping(monitor='val_loss', patience=1)]
+            self.callback = [EarlyStopping(monitor='val_loss', patience=1, verbose=1)]
 
-        self.model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy", keras.metrics.AUC], )
-        self.history = self.model.fit(X, y,
-                                      epochs=self.epochs,
-                                      batch_size=self.batch_size,
-                                      validation_data=validation_data if self.early_stop else None,
-                                      callbacks=[self.callback] if self.early_stop else None)
+        with tf.device(self.device):
+            self.model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy", keras.metrics.AUC], )
+            self.history = self.model.fit(X, y,
+                                          epochs=self.epochs,
+                                          batch_size=self.batch_size,
+                                          validation_data=validation_data if self.early_stop else None,
+                                          callbacks=[self.callback] if self.early_stop else None)
 
-        return self
+            return self
 
     # def predict(self, X: list):
     #     """Based on sklearn API"""
@@ -167,5 +199,3 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         # return prob
         y_hat = self.model.predict(X)
         return (y_hat > 0.5).astype(int)  # My implementation
-
-

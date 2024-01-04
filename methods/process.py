@@ -10,17 +10,17 @@ from imblearn.pipeline import Pipeline
 
 # Vectorizers
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from util import TfidfVectorizerTQDM  # Custom vectorizer with a nice progress bar...
-
-# Classifiers
-from sklearn.svm import SVC, LinearSVC
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 
 # Resampler
 from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, TomekLinks
+
+# Classifiers
+from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from methods.models import Word2VecModel
 
 # Neural imports
 from methods.neural import NeuralNetwork
@@ -33,7 +33,7 @@ from joblib import dump, load
 
 # Util
 from util import log
-from config import __DATA_PATH__, __EXPERIMENTS_PATH__, __PIPELINES_PATH__
+from config import __DATA_PATH__, __EXPERIMENTS_PATH__
 
 __RANDOM_SEED__ = 5
 
@@ -61,36 +61,43 @@ def resampler(model: str = 'random-under') -> Union[RandomOverSampler, RandomUnd
 
 def build_pipeline(model: str, resampling_method: str = 'random-under', verbose: bool = True) -> Pipeline:
     """Used to construct a sklearn Pipeline,"""
-    # print('\n')  # To separate the cleaning output from the model outputs
-    log(f'The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
+    log(f'[Experiment] The pipeline: "{model}" selected with the resampling method: "{resampling_method}"')
 
     models = {
         # Naive Bayes Model wih Bag of Words
         'naive-bayes': [
-            ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
+            ('vectorizer', CountVectorizer(ngram_range=(1, 2), binary=True)),
             ('resampler', resampler(model=resampling_method)),
             ('classifier', MultinomialNB())
         ],
         # Support Vector Machines with tf*idf
         'svm': [
-            ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('vectorizer', TfidfVectorizer(ngram_range=(1, 2), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
-            # ('classifier', SVC())
             ('classifier', LinearSVC(dual='auto'))
         ],
         # Logistic Regression with tf*idf
         'logistic': [
-            ('vectorizer', TfidfVectorizerTQDM(ngram_range=(1, 3), use_idf=True, smooth_idf=True, sublinear_tf=True)),
+            ('vectorizer', TfidfVectorizer(ngram_range=(1, 2), use_idf=True, smooth_idf=True, sublinear_tf=True)),
             ('resampler', resampler(model=resampling_method)),
             ('classifier', LogisticRegression(random_state=__RANDOM_SEED__))
         ],
         # Random forest model with bag of words
         'random-forest': [
-            ('vectorizer', CountVectorizer(ngram_range=(1, 3), binary=True)),
+            ('vectorizer', CountVectorizer(ngram_range=(1, 2), binary=True)),
             ('resampler', resampler(model=resampling_method)),
             ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__))
         ],
-
+        # Word embeddings using Word2Vec
+        'word2vec': [
+            ('word_embedding', Word2VecModel(
+                size=100,
+                window=5,
+                min_count=1
+            )),
+            ('resampler', resampler(model=resampling_method)),
+            ('classifier', LinearSVC(dual='auto', C=0.7))
+        ],
         # Neural Network models from neural.py
         # Convolutional Neural Network
         'cnn': [
@@ -101,12 +108,10 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
         # Long-Short Term Memory Model
         'lstm': [
             ('neural', NeuralNetwork(model_type='lstm',
-                                     epochs=10,
+                                     epochs=2,  # For me each epoch takes ~one hour, on a PC with CUDA, increase this.
                                      early_stop=True))
         ]
     }
-    # TODO: There are a few steps i can take to optimize the process and we don't use word
-    # ^embeddings. Check out: https://chat.openai.com/c/07776441-c2e6-46bd-9b84-9811ecc9c101
 
     selected_model = models.get(model)
     if selected_model:
@@ -145,7 +150,7 @@ class Experiment:
         self.resampling_method = 'random-under'
         """We conducted the experiments and figured that the random-under method would yield the best results"""
 
-        self.models = ['naive-bayes', 'svm', 'logistic', 'random-forest', 'cnn', 'lstm']
+        self.models = ['naive-bayes', 'svm', 'logistic', 'random-forest', 'word2vec', 'cnn', 'lstm']
         # ^
         """ This is passed onto perform_many_experiments, please add/remove from this list in order to conduct a 
         different experiment"""
@@ -200,8 +205,8 @@ class Experiment:
             metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_pred)
 
         # Round of the numbers to their 2nd decimal place in an elegant way :)
-        metrics_dict = {metric: format(value, '.2f') for metric, value
-                        in metrics_dict.items() if isinstance(value, float)}
+        metrics_dict = {key: format(value, '.2f') if isinstance(value, float)
+                        else value for key, value in metrics_dict.items()}
 
         return metrics_dict
 
@@ -220,7 +225,7 @@ class Experiment:
         pipeline_path = f'methods/pipelines/{pipeline_model}_{self.resampling_method}_pipeline.joblib'
 
         if os.path.exists(pipeline_path):
-            log(f'Existing pipeline found, loading "{pipeline_model}"')
+            log(f'[Experiment] Existing pipeline found, loading "{pipeline_model}_{self.resampling_method}"')
             pipeline = load(pipeline_path)
             dont_save_if_loaded = True
         else:
@@ -234,15 +239,15 @@ class Experiment:
             end_time = time.time()  # End timing
 
             if self.time_experiments:  # from init
-                log(f'Experiment "{pipeline_model}" took {end_time - start_time:.2f} seconds.')
+                log(f'[Experiment] The experiment "{pipeline_model}" took {end_time - start_time:.2f} seconds.')
 
             if save_pipe:
                 if pipeline_model == 'cnn' or pipeline_model == 'lstm':
                     pass
                 else:
-                    log(f'Saving the pipeline "{pipeline_model}"')
+                    log(f'[Experiment] Saving the pipeline "{pipeline_model}_{self.resampling_method}"')
                     dump(pipeline, pipeline_path)
-                    log(f'Successfully saved the pipeline "{pipeline_model}"')
+                    log(f'[Experiment] Successfully saved the pipeline "{pipeline_model}_{self.resampling_method}"')
 
         if return_pipe:
             return pipeline
@@ -252,7 +257,7 @@ class Experiment:
         metrics = self._metrics(y_pred, y_prob, plot=True, pipeline_model=pipeline_model)
         self.model_metrics.append(metrics)  # Add to the class list of metrics
         if self.verbose:  # also, from init
-            print(metrics)
+            print(f'[{pipeline_model}] {metrics}')
         return metrics
 
     def perform_many_experiments(self, save_pipes: bool = False) -> None:
@@ -266,7 +271,7 @@ class Experiment:
         import pandas as pd
         dataframe = pd.DataFrame(self.model_metrics)
         dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments.tex', index=False)
-        log('Successfully saved "many_experiments.tex"')
+        log('[Experiment] Successfully saved "many_experiments.tex"')
 
 
 if __name__ == '__main__':

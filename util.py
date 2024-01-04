@@ -31,7 +31,9 @@ def save_file_to_path(path: str, filename: str) -> os.path:
 
 # Progress bar / visualizations
 class TfidfVectorizerTQDM(TransformerMixin):
-    """Wrapper class around the TfidfVectorizer class to include a progress bar"""
+    """
+    Deprecated. Use TfidfVectorizer
+    Wrapper class around the TfidfVectorizer class to include a progress bar"""
 
     def __init__(self, *args, **kwargs):
         self.tfidf_vectorizer = TfidfVectorizer(*args, **kwargs)
@@ -51,7 +53,6 @@ class TfidfVectorizerTQDM(TransformerMixin):
 
     def transform(self, X, y=None):
         return self.tfidf_vectorizer.transform(X)
-
 
 
 # Testing framework here:

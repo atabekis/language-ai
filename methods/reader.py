@@ -130,12 +130,12 @@ class CleanData(Dataset):
 
     def lowercase(self) -> None:
         """Normalize the text"""
-        log('Removing uppercase letters...')
+        log('[Clean] Removing uppercase letters...')
         self.df.post = self.df.post.str.lower()
 
     def decode(self) -> None:
         """Decode the html attributes such as escape chars."""
-        log('Decoding HTML attributes...')
+        log('[Clean] Decoding HTML attributes...')
         self.df.post = self.df.post.apply(lambda x: html.unescape(x))
 
     def links(self) -> NotImplemented:
@@ -151,14 +151,14 @@ class CleanData(Dataset):
 
     def punctuation(self) -> None:
         """Removes punctuation from the text"""
-        log('Removing punctuation...')
+        log('[Clean] Removing punctuation...')
         self.df.post = self.df.post.str.replace(f'[{string.punctuation}]', '')
         self.df.post = self.df.post.str.replace(f'\\', '')
 
     def stopwords(self) -> None:
         """Remove stopwords using nltk"""
         try:
-            log('Removing stopwords...')
+            log('[Clean] Removing stopwords...')
             stop_words = set(stopwords.words('english'))
             if not self.remove_lowercase:
                 self.df.post = self.df.post.apply(lambda x: ' '.join(
@@ -167,10 +167,10 @@ class CleanData(Dataset):
                 self.df.post = self.df.post.apply(lambda x: ' '.join(
                     [word for word in x.split() if word not in stop_words]))
         except LookupError:
-            log('nltk stopwords not found')
-            log('Downloading nltk stopwords...')
+            log('[Clean] nltk stopwords not found')
+            log('[Clean] Downloading nltk stopwords...')
             nltk.download('stopwords')
-            log('Download stopwords successful, please re-run the script')
+            log('[Clean] Download stopwords successful, please re-run the script')
 
     def lemmatize(self) -> NotImplemented:
         """Lemmatize the text, not implemented yet"""
@@ -181,7 +181,7 @@ class CleanData(Dataset):
 
     def save(self) -> None:
         """if save=True, saves the csv under data/cleaned_extrover.csv"""
-        log('Saving cleaned data...')
+        log('[Clean] Saving cleaned data...')
         self.df.to_csv(self.out_path, index=False)
 
 
@@ -227,13 +227,13 @@ class Reader:
 
     def _clean_data(self) -> pd.DataFrame:
         """Calls the CleanData class and cleans the dataframe"""
-        log('Cleaning data...')
+        log('[Clean] Cleaning data...')
         self.df = CleanData(self.df).run()
         return self.df
 
     def _split_data(self) -> None:
         """split the dataframe using train_test_split"""
-        log('Splitting the dataframe into train/test sets...')
+        log('[Reader] Splitting the dataframe into train/test sets...')
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
             test_size=0.2, random_state=__RANDOM_SEED__)

@@ -8,6 +8,7 @@ If the code doesn't run when cloning from GitHub, the data folder is assumed to 
 """
 
 from methods.process import Experiment
+from methods.evaluate import Evaluate
 
 
 def main():
@@ -24,14 +25,17 @@ def main():
         'naive-bayes',
         'svm',
         'logistic',
-        'random-forest',
+        # 'random-forest',  # This lovely method takes hours -> goes in the backlog
+        # 'word2vec',
         # Neural
         'cnn',
         'lstm'
     ]
-    experiment.perform_many_experiments(save_pipes=True)
-    # experiment.perform_single_experiment(pipeline_model='svm', save_pipe=True)
+    # experiment.perform_many_experiments(save_pipes=True)
+    experiment.perform_single_experiment(pipeline_model='word2vec', save_pipe=True)
 
 
 if __name__ == '__main__':
+    # evaluator = Evaluate(pipeline_model='logistic')
+    # evaluator.coefficient_weights()
     main()
