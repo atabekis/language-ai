@@ -13,7 +13,7 @@ import numpy as np
 import keras
 import tensorflow as tf  # This is just for tf.string on line 58, can be changed if there's any other option
 from keras import Model, Input
-from keras.models import Sequential
+from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras.layers import TextVectorization
 from keras.layers import Embedding, Dropout, Conv1D, GlobalMaxPooling1D, Dense, LSTM, Reshape, GRU
@@ -54,7 +54,8 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
                  sequence_length: int = 500,
                  epochs: int = 3,
                  batch_size: int = 50,
-                 early_stop: bool = True) -> None:
+                 early_stop: bool = True,
+                 verbose: bool = True) -> None:
         """Initialize the basic control parameters of the neural network"""
 
         self.device = None
@@ -67,10 +68,11 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
         self.epochs = epochs
         self.batch_size = batch_size
         self.early_stop = early_stop  # Bool statement to control self.callback -> passed onto model.fit
+        self.verbose = verbose
 
         self.model = None
         self.history = None  # It's nice to keep this if we want to plot loss/AUC/accuracy over epochs
-        self.callback = None  # ^TODO: add:: when debug -> early_stop=True
+        self.callback = None
 
         self.vectorizer = TextVectorization(  # This is to make sure our vectors are padded and properly vectorized
             max_tokens=self.max_features,
@@ -134,7 +136,7 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
 
         #  Network structure here:
         x = Embedding(max_features, embedding_dim)(x)
-        x = GRU(gru_units, activation='tanh', dropout=0.2, recurrent_dropout=0.2)(x)
+        x = GRU(gru_units, activation='tanh', dropout=0.2, recurrent_dropout=0.2, kernel_regularizer=l2(0.01))(x)
         x = Dense(gru_units, activation="relu")(x)
         x = Dropout(0.5)(x)
 
@@ -179,7 +181,8 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
                                           epochs=self.epochs,
                                           batch_size=self.batch_size,
                                           validation_data=validation_data if self.early_stop else None,
-                                          callbacks=[self.callback] if self.early_stop else None)
+                                          callbacks=[self.callback] if self.early_stop else None,
+                                          verbose=self.verbose)
 
             return self
 

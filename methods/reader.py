@@ -70,6 +70,23 @@ class Dataset:
         """Changes the misspelled column names in the original dataframe"""
         self.df.rename(columns={'auhtor_ID': 'author_id', 'extrovert': 'label'}, inplace=True)
 
+    def label_metrics(self, save_latex: bool = True) -> pd.DataFrame:
+        """Returns basic information about the two labels in the dataframe
+            This method is used in the paper under the Data section as a table
+        """
+        avg_metrics_per_label = self.df.groupby('label')['post'].apply(lambda x: {
+            'Avg. Word Length': x.apply(lambda post: len(post.split())).mean(),
+            'Avg. Char. Count': x.apply(len).mean(),
+            'Avg. # Unique Words': x.apply(lambda post: len(set(post.split()))).mean(),
+            'Total': x.shape[0]
+        }).round(1)
+        transposed_df = avg_metrics_per_label.transpose()
+
+        if save_latex:
+            transposed_df.to_latex('output/eda_raw_data.tex' ,index=True, escape=False)
+
+        return transposed_df
+
 
 class CleanData(Dataset):
     """
@@ -78,8 +95,8 @@ class CleanData(Dataset):
 
     :param dataframe:
         Pandas dataframe
-    :param remove_lowercase: bool, optional, default True
-        Whether to remove the lowercase characters
+    :param remove_uppercase: bool, optional, default True
+        Whether to remove the uppercase characters
     :param remove_punctuation: bool, optional, default True
         Whether to remove punctuation characters
     :param remove_links: bool, optional, default True
@@ -93,17 +110,17 @@ class CleanData(Dataset):
     """
 
     def __init__(
-            self,
+            self,  # Methods marked with '*' are the ones used in the paper.
             dataframe: pd.DataFrame,
-            remove_lowercase=True,
-            remove_punctuation=True,
-            remove_links=True,
-            remove_stopwords=True,
-            lemmatize_words=True,
+            remove_uppercase=True,  # *
+            remove_punctuation=True,  # * Also decodes the HTML attributes -we count them as punctuation
+            remove_links=False,
+            remove_stopwords=True,  # *
+            lemmatize_words=False,
             save_csv=False):
 
         super().__init__(dataframe)
-        self.remove_lowercase, self.remove_punctuation = remove_lowercase, remove_punctuation
+        self.remove_uppercase, self.remove_punctuation = remove_uppercase, remove_punctuation
         self.remove_links, self.remove_stopwords = remove_links, remove_stopwords
         self.lemmatize_words = lemmatize_words
         self.save_csv = save_csv
@@ -112,14 +129,14 @@ class CleanData(Dataset):
 
     def run(self) -> pd.DataFrame:
         """Main function to clean the data based on the class parameters"""
-        if self.remove_lowercase:
+        if self.remove_uppercase:
             self.lowercase()
         if self.remove_punctuation:
             self.punctuation()
             self.decode()
 
         if self.remove_links:
-            pass  # TODO: Implement
+            pass  # Does not affect the analysis, thus not implemented here for simplicity
         if self.remove_stopwords:
             self.stopwords()
         if self.lemmatize_words:
@@ -160,7 +177,7 @@ class CleanData(Dataset):
         try:
             log('[Clean] Removing stopwords...')
             stop_words = set(stopwords.words('english'))
-            if not self.remove_lowercase:
+            if not self.remove_uppercase:
                 self.df.post = self.df.post.apply(lambda x: ' '.join(
                     [word for word in x.split() if word.lower() not in stop_words]))
             else:
@@ -241,5 +258,6 @@ class Reader:
 
 
 if __name__ == '__main__':
-    data = Reader('../data/extrovert_introvert.csv')
-    print(data.df.head())
+    df = pd.read_csv('../data/extrovert_introvert.csv', engine= 'pyarrow')
+    df_metrics = Dataset(dataframe=df)
+    print(df_metrics.jaccard_similarity())

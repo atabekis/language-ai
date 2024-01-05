@@ -19,14 +19,15 @@ from imblearn.under_sampling import RandomUnderSampler, TomekLinks
 from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from methods.models import Word2VecModel
 
 # Neural imports
 from methods.neural import NeuralNetwork
 
 # For the experiment
 from methods.reader import Reader
+
+# Cross Validation
+from sklearn.model_selection import StratifiedKFold, cross_val_score, cross_val_predict
 
 # To save the experiments
 from joblib import dump, load
@@ -82,34 +83,27 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
             ('resampler', resampler(model=resampling_method)),
             ('classifier', LogisticRegression(random_state=__RANDOM_SEED__))
         ],
-        # Random forest model with bag of words
-        'random-forest': [
-            ('vectorizer', CountVectorizer(ngram_range=(1, 2), binary=True)),
-            ('resampler', resampler(model=resampling_method)),
-            ('classifier', RandomForestClassifier(random_state=__RANDOM_SEED__))
-        ],
-        # Word embeddings using Word2Vec
-        'word2vec': [
-            ('word_embedding', Word2VecModel(
-                size=100,
-                window=5,
-                min_count=1
-            )),
-            ('resampler', resampler(model=resampling_method)),
-            ('classifier', LinearSVC(dual='auto', C=0.7))
-        ],
         # Neural Network models from neural.py
         # Convolutional Neural Network
         'cnn': [
             ('neural', NeuralNetwork(model_type='cnn',
                                      epochs=10,
-                                     early_stop=True))
+                                     early_stop=True,
+                                     verbose=verbose))
         ],
         # Long-Short Term Memory Model
         'lstm': [
             ('neural', NeuralNetwork(model_type='lstm',
                                      epochs=2,  # For me each epoch takes ~one hour, on a PC with CUDA, increase this.
-                                     early_stop=True))
+                                     early_stop=True,
+                                     verbose=verbose))
+        ],
+        # Gated Recurrent Unit Network Model
+        'gru': [
+            ('neural', NeuralNetwork(model_type='gru',
+                                     epochs=5,
+                                     early_stop=True,
+                                     verbose=verbose))
         ]
     }
 
@@ -129,14 +123,14 @@ class Experiment:
         times each experiment and prints the time it took to complete the task.
     :param verbose: bool, default=True
         if True, prints the status of the experiment
-    TODO: Add cross validation
     """
 
-    def __init__(self, time_experiments: bool = True, verbose: bool = True):
+    def __init__(self, time_experiments: bool = True, verbose: bool = True, debug=False):
         reader = Reader(__DATA_PATH__,
                         clean=True,
                         split=True,
-                        show_info=False)
+                        show_info=False,
+                        )
 
         self.time_experiments = time_experiments
         self.verbose = verbose
@@ -148,16 +142,18 @@ class Experiment:
         self.X_test, self.y_test = reader.test[0], reader.test[1]
 
         self.resampling_method = 'random-under'
+        self.resampling_models = ['random-over', 'random-under', 'smote', 'adasyn', 'tomek']
         """We conducted the experiments and figured that the random-under method would yield the best results"""
 
-        self.models = ['naive-bayes', 'svm', 'logistic', 'random-forest', 'word2vec', 'cnn', 'lstm']
+        self.models = ['naive-bayes', 'svm', 'logistic', 'cnn', 'lstm', 'gru']
         # ^
         """ This is passed onto perform_many_experiments, please add/remove from this list in order to conduct a 
         different experiment"""
 
         self.model_metrics = []
+        self.model_metrics_cv = []
 
-    def _metrics(self, y_pred: list, y_prob: list = None,
+    def _metrics(self, y_pred: list, y_prob: list = None, cv: bool = False,
                  plot: bool = True, pipeline_model: str = None) -> dict[str, float]:
         """
         Function to compute various binary classification metrics.
@@ -180,9 +176,10 @@ class Experiment:
 
         metrics_dict = {
             'model': pipeline_model,
-            'accuracy': accuracy_score(self.y_test, y_pred),
-            'precision': precision_score(self.y_test, y_pred), 'recall': recall_score(self.y_test, y_pred),
-            'f1_score': f1_score(self.y_test, y_pred)}
+            'accuracy': accuracy_score(self.y_test if not cv else self.labels, y_pred),
+            'precision': precision_score(self.y_test if not cv else self.labels, y_pred),
+            'recall': recall_score(self.y_test if not cv else self.labels, y_pred),
+            'f1_score': f1_score(self.y_test if not cv else self.labels, y_pred)}
 
         # ROC-AUC
         if y_prob is not None:
@@ -202,7 +199,7 @@ class Experiment:
                 plt.legend(loc='lower right')
                 plt.show()
         else:
-            metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_pred)
+            metrics_dict['roc_auc'] = roc_auc_score(self.y_test if not cv else self.labels, y_pred)
 
         # Round of the numbers to their 2nd decimal place in an elegant way :)
         metrics_dict = {key: format(value, '.2f') if isinstance(value, float)
@@ -212,19 +209,24 @@ class Experiment:
 
     def perform_single_experiment(self, pipeline_model: str,
                                   return_pipe: bool = False,
-                                  save_pipe: bool = False) -> Union[dict[str, float], Pipeline]:
+                                  save_pipe: bool = False,
+                                  load_pipe: bool = True) -> Union[dict[str, float], Pipeline]:
         """Performs a single experiment based on the given pipeline and resampling method
-        :param pipeline_model: str,
-            to be passed onto the build_pipeline() function, which returns a Pipe
-        :param return_pipe: bool, default False,
-            if true, only returns the pipeline -> this is used in the evaluation
-        :param save_pipe: bool, default False
+        :param pipeline_model: str;
+            To be passed onto the build_pipeline() function, which returns a Pipe.
+        :param return_pipe: bool, default False.
+            If true, only returns the pipeline -> this is used in the evaluation.
+        :param save_pipe: bool, default False.
+            Saves the pipeline using joblib pickle.
+        :param load_pipe:
+            Loads the saved pipe if it exists.
+        :return Calculated metrics or the pipeline if return_pipe=True
         """
         # Check if the pipeline is already saved on local, if not perform the experiment
         dont_save_if_loaded = None
         pipeline_path = f'methods/pipelines/{pipeline_model}_{self.resampling_method}_pipeline.joblib'
 
-        if os.path.exists(pipeline_path):
+        if os.path.exists(pipeline_path) and load_pipe:
             log(f'[Experiment] Existing pipeline found, loading "{pipeline_model}_{self.resampling_method}"')
             pipeline = load(pipeline_path)
             dont_save_if_loaded = True
@@ -242,8 +244,8 @@ class Experiment:
                 log(f'[Experiment] The experiment "{pipeline_model}" took {end_time - start_time:.2f} seconds.')
 
             if save_pipe:
-                if pipeline_model == 'cnn' or pipeline_model == 'lstm':
-                    pass
+                if pipeline_model in self.neural:
+                    pass  # The deadline is approaching and I simply don't have time to write saving for neural...
                 else:
                     log(f'[Experiment] Saving the pipeline "{pipeline_model}_{self.resampling_method}"')
                     dump(pipeline, pipeline_path)
@@ -260,18 +262,58 @@ class Experiment:
             print(f'[{pipeline_model}] {metrics}')
         return metrics
 
-    def perform_many_experiments(self, save_pipes: bool = False) -> None:
+    def perform_many_experiments(self, save_pipes: bool = False, load_pipes: bool = True) -> None:
         """Calls the perform_single_experiment with all models in self.models. Appends to the final list of metrics"""
         for model in self.models:
-            self.perform_single_experiment(pipeline_model=model, save_pipe=save_pipes)
+            self.perform_single_experiment(pipeline_model=model, save_pipe=save_pipes, load_pipe=load_pipes)
         self._export()  # Save the data for the paper
 
-    def _export(self):
+    def cross_validate_experiments(self, n_folds: int = 5, shuffle: bool = True,
+                                   n_jobs: int = -1, verbose: bool = True) -> None:
+        """Call each pipeline and cross validate to extract the cross validation metrics
+        :param n_folds: int, optional, default 5.
+            Number of cross-validation folds.
+        :param shuffle: bool, optional, default True.
+            Shuffle the data before splitting. The random seed is passed for reproducible results
+        :param n_jobs: int, optional, default -1.
+            Number of jobs to run in parallel
+        :param verbose: bool, optional, default True.
+            Prints out the metrics of the cross validated experiments
+        """
+        for model in self.models:
+            try:
+                neural = True if model in self.neural else False  # We cannot have multiprocessing with neural networks
+
+                log(f'[Experiment] Cross-Validating "{model}" with {n_folds} folds...')
+                pipeline = build_pipeline(model=model, resampling_method=self.resampling_method, verbose=False)
+
+                k_fold = StratifiedKFold(n_splits=n_folds, shuffle=shuffle, random_state=__RANDOM_SEED__)
+                y_pred, y_prob = cross_val_predict(pipeline, self.posts, self.labels,
+                                                   cv=k_fold, verbose=True, n_jobs=1 if neural else n_jobs), None
+                metrics = self._metrics(y_pred, y_prob, cv=True, plot=False, pipeline_model=f'{model}_CV')
+
+                if verbose:
+                    print(f'[{model}] {metrics}')
+                self.model_metrics_cv.append(metrics)
+            except Exception as e:
+                print(f'Error in model "{model}": {e}')
+                self._export(cv=True, abort=True)
+                return None
+        self._export(cv=True)
+
+    def _export(self, cv=False, abort: bool = False):
         """Takes the finalized model metrics and exports it as .tex table"""
         import pandas as pd
         dataframe = pd.DataFrame(self.model_metrics)
-        dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments.tex', index=False)
-        log('[Experiment] Successfully saved "many_experiments.tex"')
+        if not cv:
+            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments.tex', index=False)
+            log('[Experiment] Successfully saved "many_experiments.tex"')
+        elif cv and abort:
+            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments_CV_abort.tex', index=False)
+            log('[Experiment] Successfully saved "many_experiments_CV.tex"')
+        else:
+            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments_CV.tex', index=False)
+            log('[Experiment] Successfully saved "many_experiments_CV.tex"')
 
 
 if __name__ == '__main__':

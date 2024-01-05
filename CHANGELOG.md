@@ -1,4 +1,18 @@
-### V3.2 - ADD
+### V3.3 - ADD
+ _Ata Bekişoğlu - 05/01/2024_
+* Once again, quite some changes:
+* Got rid of `tune_models.py` since we really don't have enough time and it takes quite some time to process - i ave no time to debug. 
+* Also, got rid of `evaluate.py`, im keeping the `evaluate.ipynb` since i can have a flow and show some visualizations on the side. This file does not contribute at all to the experiment but its using the experiment class to extract some findings.
+* Implemented `cross_validate_experiments()` inside `Experiment`, which cross validates experiments :)
+  * I'm able to run the sklearn models but the neural networks will take quite some time if i try to cross-validate. I'll decide on whether to CV the neural networks or not after i keep it running for a while.
+* Inside `explore_sampling.ipynb` i also added a loop to run LinearSVC on all resampling methods -- I did this a few commits ago but maybe we'll use the table this cell exports in the paper.
+* `Reader`: changed function name `remove_lowercase` → `remove_uppercase`
+* `Experiment`: added abort save so that we don't loose the calculated metrics if one of the neural networks is acting up.
+* `Expreiment`: Also added debugging where i just cut the data to see if a model/method is working.
+* Some cleanup and commenting/documenting
+
+### V3.2 - 769bdfc
+
  _Ata Bekişoğlu - 03/01/2024_ 
 
 * It was indeed not the end of the coding part... Some big changes:
