@@ -30,12 +30,12 @@ def main():
         # Neural
         'cnn',
         'lstm',
-        'gru'
+        'fasttext',
+        # 'gru'  # Does not work
     ]
-    # experiment.perform_many_experiments(save_pipes=False, load_pipes=False)
-    # experiment.perform_single_experiment(pipeline_model='svm', save_pipe=False, load_pipe=False)
-    experiment.cross_validate_experiments()
-    # print(experiment.labels.shape)
+    experiment.perform_single_experiment(pipeline_model='fasttext', save_pipe=False, load_pipe=False)
+    # experiment.perform_many_experiments(save_pipes=False, load_pipes=True)
+    # experiment.cross_validate_experiments()
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ from imblearn.under_sampling import RandomUnderSampler, TomekLinks
 from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
+from methods.fasttext_model import FastTextVectorizer
 
 # Neural imports
 from methods.neural import NeuralNetwork
@@ -27,7 +28,7 @@ from methods.neural import NeuralNetwork
 from methods.reader import Reader
 
 # Cross Validation
-from sklearn.model_selection import StratifiedKFold, cross_val_score, cross_val_predict
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
 
 # To save the experiments
 from joblib import dump, load
@@ -39,20 +40,23 @@ from config import __DATA_PATH__, __EXPERIMENTS_PATH__
 __RANDOM_SEED__ = 5
 
 
-def resampler(model: str = 'random-under') -> Union[RandomOverSampler, RandomUnderSampler,
-                                                    SMOTE, ADASYN, TomekLinks, None]:
+def resampler(model: str = 'random-under', parallel: bool = False) -> Union[RandomOverSampler, RandomUnderSampler,
+SMOTE, ADASYN, TomekLinks, None]:
     """
     Function to select a resampling method based on models from the imbalanced-learn library.
 
     :param model: str, default 'random-under'
-    :return:
+        Resampling method model name.
+    :param parallel: bool, default False.
+        passes to the n_jobs parameter.
+    :return: Resampling method
     """
     models = {
         'random-over': RandomOverSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
         'random-under': RandomUnderSampler(sampling_strategy='auto', random_state=__RANDOM_SEED__),
-        'smote': SMOTE(sampling_strategy='auto', random_state=__RANDOM_SEED__),
-        'adasyn': ADASYN(sampling_strategy='auto', random_state=__RANDOM_SEED__),
-        'tomek': TomekLinks(sampling_strategy='auto')
+        'smote': SMOTE(sampling_strategy='auto', random_state=__RANDOM_SEED__, n_jobs=-1 if parallel else None),
+        'adasyn': ADASYN(sampling_strategy='auto', random_state=__RANDOM_SEED__, n_jobs=-1 if parallel else None),
+        'tomek': TomekLinks(sampling_strategy='auto', n_jobs=-1 if parallel else None)
     }
     if model:
         return models.get(model)
@@ -94,16 +98,19 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
         # Long-Short Term Memory Model
         'lstm': [
             ('neural', NeuralNetwork(model_type='lstm',
-                                     epochs=2,  # For me each epoch takes ~one hour, on a PC with CUDA, increase this.
+                                     epochs=5,  # For me each epoch takes ~one hour, on a PC with CUDA, increase this.
                                      early_stop=True,
                                      verbose=verbose))
         ],
         # Gated Recurrent Unit Network Model
-        'gru': [
-            ('neural', NeuralNetwork(model_type='gru',
+        'gru': [  # DEPRECATED
+            ('neural', NeuralNetwork(model_type='gru',  # DEPRECATED
                                      epochs=5,
                                      early_stop=True,
                                      verbose=verbose))
+        ],
+        'fasttext': [
+            ('classifier', FastTextVectorizer())
         ]
     }
 
@@ -125,12 +132,11 @@ class Experiment:
         if True, prints the status of the experiment
     """
 
-    def __init__(self, time_experiments: bool = True, verbose: bool = True, debug=False):
+    def __init__(self, time_experiments: bool = True, verbose: bool = True, debug=False) -> None:
         reader = Reader(__DATA_PATH__,
                         clean=True,
                         split=True,
-                        show_info=False,
-                        )
+                        show_info=False,)
 
         self.time_experiments = time_experiments
         self.verbose = verbose
@@ -141,17 +147,30 @@ class Experiment:
         self.X_train, self.y_train = reader.train[0], reader.train[1]
         self.X_test, self.y_test = reader.test[0], reader.test[1]
 
+        self.neural = {'cnn', 'lstm', 'gru'}
+
+        self.debug_cutoff = 0.1
+
+        if debug:
+            self.X_train, self.y_train = self.X_train[:int(len(self.X_train) * self.debug_cutoff)], self.y_train[:int(
+                len(self.y_train) * self.debug_cutoff)]
+            self.X_test, self.y_test = self.X_test[:int(len(self.X_test) * self.debug_cutoff)], self.y_test[:int(
+                len(self.y_test) * self.debug_cutoff)]
+
         self.resampling_method = 'random-under'
         self.resampling_models = ['random-over', 'random-under', 'smote', 'adasyn', 'tomek']
         """We conducted the experiments and figured that the random-under method would yield the best results"""
 
-        self.models = ['naive-bayes', 'svm', 'logistic', 'cnn', 'lstm', 'gru']
+        self.models = ['naive-bayes', 'svm', 'logistic', 'cnn', 'lstm', 'gru', 'fasttext']
         # ^
         """ This is passed onto perform_many_experiments, please add/remove from this list in order to conduct a 
         different experiment"""
 
         self.model_metrics = []
         self.model_metrics_cv = []
+
+        if 'fasttext' in self.models and not os.path.exists('data/fasttext_train.txt'):
+            self._fasttext_write()
 
     def _metrics(self, y_pred: list, y_prob: list = None, cv: bool = False,
                  plot: bool = True, pipeline_model: str = None) -> dict[str, float]:
@@ -181,7 +200,7 @@ class Experiment:
             'recall': recall_score(self.y_test if not cv else self.labels, y_pred),
             'f1_score': f1_score(self.y_test if not cv else self.labels, y_pred)}
 
-        # ROC-AUC
+        # ROC-AUC  -- This method is deprecated due to the neural networks, we don't use y_prob anymore.
         if y_prob is not None:
             metrics_dict['roc_auc'] = roc_auc_score(self.y_test, y_prob)
 
@@ -203,7 +222,7 @@ class Experiment:
 
         # Round of the numbers to their 2nd decimal place in an elegant way :)
         metrics_dict = {key: format(value, '.2f') if isinstance(value, float)
-                        else value for key, value in metrics_dict.items()}
+        else value for key, value in metrics_dict.items()}
 
         return metrics_dict
 
@@ -229,11 +248,12 @@ class Experiment:
         if os.path.exists(pipeline_path) and load_pipe:
             log(f'[Experiment] Existing pipeline found, loading "{pipeline_model}_{self.resampling_method}"')
             pipeline = load(pipeline_path)
-            dont_save_if_loaded = True
         else:
             # Start timing
             start_time = time.time()
             # We build the pipeline
+            self.resampling_method = None if ((pipeline_model == 'fasttext') or
+                                              (pipeline_model in self.neural)) else self.resampling_method
             pipeline = build_pipeline(pipeline_model, resampling_method=self.resampling_method)
 
             pipeline.fit(self.X_train, self.y_train)  # Fit the model
@@ -269,7 +289,8 @@ class Experiment:
         self._export()  # Save the data for the paper
 
     def cross_validate_experiments(self, n_folds: int = 5, shuffle: bool = True,
-                                   n_jobs: int = -1, verbose: bool = True) -> None:
+                                   n_jobs: int = -1, verbose: bool = True,
+                                   exclude_neural: bool = True) -> None:
         """Call each pipeline and cross validate to extract the cross validation metrics
         :param n_folds: int, optional, default 5.
             Number of cross-validation folds.
@@ -279,8 +300,12 @@ class Experiment:
             Number of jobs to run in parallel
         :param verbose: bool, optional, default True.
             Prints out the metrics of the cross validated experiments
+        :param exclude_neural: bool, optional default True,
+            Excludes the neural networks from the cross validation.
         """
         for model in self.models:
+            if model == 'fasttext' or exclude_neural:
+                continue
             try:
                 neural = True if model in self.neural else False  # We cannot have multiprocessing with neural networks
 
@@ -295,14 +320,28 @@ class Experiment:
                 if verbose:
                     print(f'[{model}] {metrics}')
                 self.model_metrics_cv.append(metrics)
-            except Exception as e:
+
+            except Exception as e:  # This is just in case the neural networks start acting up
                 print(f'Error in model "{model}": {e}')
                 self._export(cv=True, abort=True)
                 return None
         self._export(cv=True)
 
-    def _export(self, cv=False, abort: bool = False):
-        """Takes the finalized model metrics and exports it as .tex table"""
+    def _fasttext_write(self):
+        """Writes to the file fasttext_train in the format the lib. expects it"""
+        log('[Experiment] Writing the fasttext training data...')
+        with open('data/fasttext_train.txt', 'w', encoding='utf-8') as f:
+            for post, label in zip(self.X_train, self.y_train):
+                f.write(f'__label__{label} {post}\n')
+            f.close()
+
+    def _export(self, cv=False, abort: bool = False) -> None:
+        """Takes the finalized model metrics and exports it as .tex table
+        :param cv: bool, default=False,
+            If the cross validation function is calling, we save the file with the addition '_CV' in the end
+        :param abort: bool, default=False,
+            CV calls this if there's an error raised, and we save the tex file to not lose progress.
+        """
         import pandas as pd
         dataframe = pd.DataFrame(self.model_metrics)
         if not cv:
@@ -314,10 +353,3 @@ class Experiment:
         else:
             dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments_CV.tex', index=False)
             log('[Experiment] Successfully saved "many_experiments_CV.tex"')
-
-
-if __name__ == '__main__':
-    experiment = Experiment(
-        time_experiments=True,
-        verbose=True)
-    experiment.perform_many_experiments()

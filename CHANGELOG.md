@@ -10,6 +10,9 @@
 * `Experiment`: added abort save so that we don't loose the calculated metrics if one of the neural networks is acting up.
 * `Expreiment`: Also added debugging where i just cut the data to see if a model/method is working.
 * Some cleanup and commenting/documenting
+#### V3.3.1
+* Ran the code for quite a while and realized that GRU does not want to work.
+* Qucikly implemented fasttext under `fasttext_model.py`.
 
 ### V3.2 - 769bdfc
 

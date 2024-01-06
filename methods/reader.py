@@ -254,10 +254,3 @@ class Reader:
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
             test_size=0.2, random_state=__RANDOM_SEED__)
-
-
-
-if __name__ == '__main__':
-    df = pd.read_csv('../data/extrovert_introvert.csv', engine= 'pyarrow')
-    df_metrics = Dataset(dataframe=df)
-    print(df_metrics.jaccard_similarity())
