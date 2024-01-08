@@ -1,4 +1,5 @@
 # Core imports
+import os
 import html
 import string
 import pandas as pd
@@ -12,6 +13,7 @@ from sklearn.model_selection import train_test_split
 
 # Local imports
 from util import log, save_file_to_path
+from config import __PROJECT_PATH__
 
 # Reproducibility
 __RANDOM_SEED__ = 5
@@ -77,13 +79,15 @@ class Dataset:
         avg_metrics_per_label = self.df.groupby('label')['post'].apply(lambda x: {
             'Avg. Word Length': x.apply(lambda post: len(post.split())).mean(),
             'Avg. Char. Count': x.apply(len).mean(),
+            'Normalized Vocab. Size': len(set(' '.join(x).split())) / x.shape[0],
             'Avg. # Unique Words': x.apply(lambda post: len(set(post.split()))).mean(),
             'Total': x.shape[0]
         }).round(1)
         transposed_df = avg_metrics_per_label.transpose()
 
         if save_latex:
-            transposed_df.to_latex('output/eda_raw_data.tex' ,index=True, escape=False)
+            transposed_df.to_latex(os.path.join(__PROJECT_PATH__, 'methods', 'output', 'eda_raw_data.tex'),
+                                   index=True, escape=False)
 
         return transposed_df
 
@@ -254,3 +258,9 @@ class Reader:
         self.train[0], self.test[0], self.train[1], self.test[1] = train_test_split(
             self.df['post'], self.df['label'],
             test_size=0.2, random_state=__RANDOM_SEED__)
+
+
+if __name__ == '__main__':
+    df = Reader('../data/extrovert_introvert.csv').df
+    dataset = Dataset(df)
+    dataset.label_metrics()

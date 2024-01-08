@@ -35,7 +35,7 @@ from joblib import dump, load
 
 # Util
 from util import log
-from config import __DATA_PATH__, __EXPERIMENTS_PATH__
+from config import __DATA_PATH__, __PROJECT_PATH__
 
 __RANDOM_SEED__ = 5
 
@@ -136,7 +136,7 @@ class Experiment:
         reader = Reader(__DATA_PATH__,
                         clean=True,
                         split=True,
-                        show_info=False,)
+                        show_info=False, )
 
         self.time_experiments = time_experiments
         self.verbose = verbose
@@ -161,7 +161,7 @@ class Experiment:
         self.resampling_models = ['random-over', 'random-under', 'smote', 'adasyn', 'tomek']
         """We conducted the experiments and figured that the random-under method would yield the best results"""
 
-        self.models = ['naive-bayes', 'svm', 'logistic', 'cnn', 'lstm', 'gru', 'fasttext']
+        self.models = ['naive-bayes', 'svm', 'logistic', 'fasttext', 'cnn', 'lstm']
         # ^
         """ This is passed onto perform_many_experiments, please add/remove from this list in order to conduct a 
         different experiment"""
@@ -169,7 +169,8 @@ class Experiment:
         self.model_metrics = []
         self.model_metrics_cv = []
 
-        if 'fasttext' in self.models and not os.path.exists('data/fasttext_train.txt'):
+        if ('fasttext' in self.models and
+                not os.path.exists(os.path.join(__PROJECT_PATH__, 'data', 'fasttext_train.txt'))):
             self._fasttext_write()
 
     def _metrics(self, y_pred: list, y_prob: list = None, cv: bool = False,
@@ -243,7 +244,9 @@ class Experiment:
         """
         # Check if the pipeline is already saved on local, if not perform the experiment
         dont_save_if_loaded = None
-        pipeline_path = f'methods/pipelines/{pipeline_model}_{self.resampling_method}_pipeline.joblib'
+        pipeline_path = os.path.join(__PROJECT_PATH__, 'methods', 'pipelines',
+                                     f'{pipeline_model}_{self.resampling_method}_pipeline.joblib')
+        # pipeline_path = f'methods/pipelines/{pipeline_model}_{self.resampling_method}_pipeline.joblib'
 
         if os.path.exists(pipeline_path) and load_pipe:
             log(f'[Experiment] Existing pipeline found, loading "{pipeline_model}_{self.resampling_method}"')
@@ -264,7 +267,7 @@ class Experiment:
                 log(f'[Experiment] The experiment "{pipeline_model}" took {end_time - start_time:.2f} seconds.')
 
             if save_pipe:
-                if pipeline_model in self.neural:
+                if pipeline_model in self.neural or pipeline_model == 'fasttext':
                     pass  # The deadline is approaching and I simply don't have time to write saving for neural...
                 else:
                     log(f'[Experiment] Saving the pipeline "{pipeline_model}_{self.resampling_method}"')
@@ -290,7 +293,7 @@ class Experiment:
 
     def cross_validate_experiments(self, n_folds: int = 5, shuffle: bool = True,
                                    n_jobs: int = -1, verbose: bool = True,
-                                   exclude_neural: bool = True) -> None:
+                                   exclude_neural: bool = False) -> None:
         """Call each pipeline and cross validate to extract the cross validation metrics
         :param n_folds: int, optional, default 5.
             Number of cross-validation folds.
@@ -300,11 +303,11 @@ class Experiment:
             Number of jobs to run in parallel
         :param verbose: bool, optional, default True.
             Prints out the metrics of the cross validated experiments
-        :param exclude_neural: bool, optional default True,
+        :param exclude_neural: bool, optional default False,
             Excludes the neural networks from the cross validation.
         """
         for model in self.models:
-            if model == 'fasttext' or exclude_neural:
+            if model == 'fasttext' or (exclude_neural and model in self.neural):
                 continue
             try:
                 neural = True if model in self.neural else False  # We cannot have multiprocessing with neural networks
@@ -330,7 +333,7 @@ class Experiment:
     def _fasttext_write(self):
         """Writes to the file fasttext_train in the format the lib. expects it"""
         log('[Experiment] Writing the fasttext training data...')
-        with open('data/fasttext_train.txt', 'w', encoding='utf-8') as f:
+        with open(os.path.join(__PROJECT_PATH__, 'data', 'fasttext_train.txt'), 'w', encoding='utf-8') as f:
             for post, label in zip(self.X_train, self.y_train):
                 f.write(f'__label__{label} {post}\n')
             f.close()
@@ -343,13 +346,20 @@ class Experiment:
             CV calls this if there's an error raised, and we save the tex file to not lose progress.
         """
         import pandas as pd
-        dataframe = pd.DataFrame(self.model_metrics)
+        dataframe = pd.DataFrame(self.model_metrics_cv)
+        path = os.path.join(__PROJECT_PATH__, 'methods', 'output')
         if not cv:
-            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments.tex', index=False)
+            dataframe = pd.DataFrame(self.model_metrics)
+            dataframe.to_latex(os.path.join(path, f'many_experiments_{self.resampling_method}.tex'), index=False)
             log('[Experiment] Successfully saved "many_experiments.tex"')
         elif cv and abort:
-            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments_CV_abort.tex', index=False)
+            dataframe.to_latex(os.path.join(path, f'many_experiments_CV_{self.resampling_method}_abort.tex'),
+                               index=False)
             log('[Experiment] Successfully saved "many_experiments_CV.tex"')
         else:
-            dataframe.to_latex(f'{__EXPERIMENTS_PATH__}/many_experiments_CV.tex', index=False)
+            dataframe.to_latex(os.path.join(path, f'many_experiments_{self.resampling_method}_CV.tex'), index=False)
             log('[Experiment] Successfully saved "many_experiments_CV.tex"')
+
+
+if __name__ == '__main__':
+    print(__PROJECT_PATH__)

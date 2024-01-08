@@ -33,12 +33,15 @@ def main():
         'fasttext',
         # 'gru'  # Does not work
     ]
-    experiment.perform_single_experiment(pipeline_model='fasttext', save_pipe=False, load_pipe=False)
-    # experiment.perform_many_experiments(save_pipes=False, load_pipes=True)
-    # experiment.cross_validate_experiments()
+
+    experiment.resampling_method = None
+
+    experiment.perform_single_experiment(pipeline_model='naive-bayes', load_pipe=False)
+    experiment.perform_single_experiment(pipeline_model='svm', load_pipe=False)
+    experiment.perform_single_experiment(pipeline_model='logistic', load_pipe=False)
+    experiment.cross_validate_experiments(exclude_neural=True)
+    # experiment.perform_many_experiments(save_pipes=True, load_pipes=True)
 
 
 if __name__ == '__main__':
-    # evaluator = Evaluate(pipeline_model='logistic')
-    # evaluator.coefficient_weights()
     main()

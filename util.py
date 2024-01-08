@@ -4,9 +4,9 @@ from datetime import datetime
 
 # Updating classes to have progress bars!
 from tqdm import tqdm
-from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.base import TransformerMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
+from config import __PROJECT_PATH__
 
 
 def log(*args, **kwargs):
@@ -26,7 +26,7 @@ def save_file_to_path(path: str, filename: str) -> os.path:
     :return: path of the saved file
     """
     directory, _filename = os.path.split(path)
-    return os.path.join(directory, filename)
+    return os.path.join(__PROJECT_PATH__, directory, filename)
 
 
 # Progress bar / visualizations

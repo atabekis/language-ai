@@ -1,4 +1,6 @@
+import os
 import fasttext
+from config import __PROJECT_PATH__
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -13,8 +15,9 @@ class FastTextVectorizer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         # Train FastText model
-        self.model = fasttext.train_supervised('data/fasttext_train.txt', dim=self.dim, epoch=self.epoch,
-                                               lr=self.lr, wordNgrams=self.word_ngrams, thread=2)
+        self.model = fasttext.train_supervised(os.path.join(__PROJECT_PATH__, 'data', 'fasttext_train.txt'),
+                                               dim=self.dim, epoch=self.epoch, lr=self.lr, wordNgrams=self.word_ngrams,
+                                               thread=2)
         return self
 
     def transform(self, X):

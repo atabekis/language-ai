@@ -186,10 +186,6 @@ class NeuralNetwork(BaseEstimator, TransformerMixin):
 
             return self
 
-    # def predict(self, X: list):
-    #     """Based on sklearn API"""
-    #     return self.model.predict(X)  # Store later for predict proba
-
     def predict(self, X: list) -> list:
         """Predict using the trained model
         Notes:
