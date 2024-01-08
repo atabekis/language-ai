@@ -30,16 +30,14 @@ def main():
         # Neural
         'cnn',
         'lstm',
+        # WordEmbeddings
         'fasttext',
-        # 'gru'  # Does not work
     ]
 
     experiment.resampling_method = None
 
-    experiment.perform_single_experiment(pipeline_model='naive-bayes', load_pipe=False)
-    experiment.perform_single_experiment(pipeline_model='svm', load_pipe=False)
-    experiment.perform_single_experiment(pipeline_model='logistic', load_pipe=False)
-    experiment.cross_validate_experiments(exclude_neural=True)
+    experiment.perform_single_experiment(pipeline_model='fasttext', load_pipe=False)
+
     # experiment.perform_many_experiments(save_pipes=True, load_pipes=True)
 
 

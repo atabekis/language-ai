@@ -5,8 +5,18 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class FastTextVectorizer(BaseEstimator, TransformerMixin):
+    """Represents the FastText model to be used in a Pipeline
+    :param dim: int, default 300;
+        The dimensionality of the vectorizer.
+    :param epoch: int, default 10;
+        Number of epochs to train for.
+    :param lr: float, default 1.0,
+        learning rate of the model.
+    :param word_ngrams: int default 2;
+        Word n-grams to be trained on
+    """
 
-    def __init__(self, dim=300, epoch=5, lr=0.1, word_ngrams=2):
+    def __init__(self, dim=300, epoch=10, lr=0.8, word_ngrams=2):
         self.model = None
         self.dim = dim
         self.epoch = epoch
@@ -17,7 +27,7 @@ class FastTextVectorizer(BaseEstimator, TransformerMixin):
         # Train FastText model
         self.model = fasttext.train_supervised(os.path.join(__PROJECT_PATH__, 'data', 'fasttext_train.txt'),
                                                dim=self.dim, epoch=self.epoch, lr=self.lr, wordNgrams=self.word_ngrams,
-                                               thread=2)
+                                               thread=1)
         return self
 
     def transform(self, X):
