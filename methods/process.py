@@ -19,7 +19,7 @@ from imblearn.under_sampling import RandomUnderSampler, TomekLinks
 from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
-from methods.fasttext_model import FastTextVectorizer
+from methods.fasttext_model import FastTextModel
 
 # Neural imports
 from methods.neural import NeuralNetwork
@@ -110,7 +110,7 @@ def build_pipeline(model: str, resampling_method: str = 'random-under', verbose:
                                      verbose=verbose))
         ],
         'fasttext': [
-            ('classifier', FastTextVectorizer())
+            ('classifier', FastTextModel())
         ]
     }
 

@@ -1,4 +1,25 @@
-### V3.3 - ADD
+### V4.0 - ADD
+ _Ata Bekişoğlu - 09/01/2024_
+* Final stable version: welcome to version 4.0
+* I missed to list some changes in the past 2-3 commits but, looking back at them, i'll try my best to add them here:
+* Most changes were done in order to finally extract some useful information for the paper:
+* Finally added proper project paths `__PROJECT_PATH__` to `config.py`
+* Some bug fixes to `process.py`: now the `cross_validate_experiments` works properly for simple models. I've decided to exclude neural network models from the CV funcion since I do not have the system capacity or the time to do it.
+* Under `evaluate.ipynb`, I also added the method to extract information from fasttext and save all the top 10 words in `methods/output`
+  * Logically, added the `get_word_weights` function in the `FastTextModel`
+  * The proper implementation of the _FastText_ model was lost in some previous undocumented commits, but we train and save a .txt file, much like in any other implementation.
+* Under `reader.py` added `label_metrics()` which returns rome information about the raw dataset, this is used in the **Data** part of the paper.
+* Fixed the resampling method testing cell in `explore_sampling.ipynb`, now in reduced the dimensionality and i do not wait a millennia for it to end.
+
+* **Here are some very important things to do for V4.1, which hopefully will be the last version :)**
+  * Finalize the `methods/README.md` and `README.md`. 
+  * Quite a lot of documentation is needed for the jupyter notebooks.
+  * Check all files to see if the comments and the documentation is adequate and to the PEP8 standard.
+  * Check all imports in a similar fashion...
+  * Most of the sources are put under the docstrings, but for the newer models like _FastText_ i have minimal documentation and sourcing.
+
+
+### V3.3 - 0aeba6d
  _Ata Bekişoğlu - 05/01/2024_
 * Once again, quite some changes:
 * Got rid of `tune_models.py` since we really don't have enough time and it takes quite some time to process - i ave no time to debug. 
@@ -12,7 +33,7 @@
 * Some cleanup and commenting/documenting
 #### V3.3.1
 * Ran the code for quite a while and realized that GRU does not want to work.
-* Qucikly implemented fasttext under `fasttext_model.py`.
+* Quickly implemented fasttext under `fasttext_model.py`.
 
 ### V3.2 - 769bdfc
 
