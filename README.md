@@ -6,7 +6,7 @@ Eindhoven University of Technology, Tilburg University
 
  > ADD: Link to the paper
 
-### Table of Contents - add links
+### Table of Contents
 * [About](https://github.com/atabekis/language-ai?tab=readme-ov-file#about)
 * [Data](https://github.com/atabekis/language-ai?tab=readme-ov-file#data)
   * [Including own data](https://github.com/atabekis/language-ai?tab=readme-ov-file#including-own-data)

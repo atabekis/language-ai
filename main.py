@@ -26,6 +26,23 @@ def main(
     Notes:
         In order to control the data-reader part of the experiment please refer to process.py;
             In the Experiment class, the Reader object can be called with the attribute "clean=True/False"
+
+    :param single_experiment: str, default None,
+        Pss one of the six experiments to perform a single experiment.
+    :param multiple_experiments: bool, default True
+        Runs all the experiments
+    :param cross_validate_experiments: bool, default False,
+        Runs the simple models with k-fold cross validation.
+    :param time_experiments: bool, default True,
+        Prints the time it took to execute the experiment.
+    :param verbose: bool, default True,
+        Verbose output.
+    :param debug: bool, default False,
+        Cuts the test and train data by a debug cutoff factor (0.1) - used to test new models.
+    :param load_existing_models: bool, default False,
+        loads existing pipelines from the /pipelines folder.
+    :param save_models: bool, default True,
+        saves the fitted pipelines.
     """
     # Create the experiment object
     experiment = Experiment(
@@ -44,5 +61,10 @@ def main(
         experiment.cross_validate_experiments(verbose=verbose)
 
 
+# Main
 if __name__ == '__main__':
-    main()
+    main(
+        multiple_experiments=True,
+        time_experiments=True,
+        verbose=True,
+    )
