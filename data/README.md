@@ -1,1 +1,2 @@
-Please extract the data in this folder (extrovert_introvert.csv). Have to manually extract it as the data cannot be put in github.
+### Data
+This folder is used to host the .csv files used in the experiments. Please check the [data part of our documentation](https://github.com/atabekis/language-ai?tab=readme-ov-file#data)
