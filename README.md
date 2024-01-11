@@ -7,11 +7,13 @@ Eindhoven University of Technology, Tilburg University
  > ADD: Link to the paper
 
 ### Table of Contents - add links
-* [About](https://github.com/atabekis/language-ai#about)
-* [Data](https://github.com/atabekis/language-ai#data)
-* [Getting started](https://github.com/atabekis/language-ai)
-* [Reproducibility](https://github.com/atabekis/language-ai)
-* [Dependencies](https://github.com/atabekis/language-ai)
+* [About](https://github.com/atabekis/language-ai?tab=readme-ov-file#about)
+* [Data](https://github.com/atabekis/language-ai?tab=readme-ov-file#data)
+  * [Including own data](https://github.com/atabekis/language-ai?tab=readme-ov-file#including-own-data)
+* [Getting started](https://github.com/atabekis/language-ai?tab=readme-ov-file#getting-started)
+  * [Build your own models/pipelines](https://github.com/atabekis/language-ai?tab=readme-ov-file#building-your-own-modelspipelines)
+* [Reproducibility](https://github.com/atabekis/language-ai?tab=readme-ov-file#reproducibility)
+* [Dependencies](https://github.com/atabekis/language-ai?tab=readme-ov-file#dependencies)
 
 
 ### About
