@@ -1,4 +1,10 @@
-### V4.0 - ADD
+### V4.1 - ADD
+ _Ata Bekişoğlu - 11/01/2024_
+* Final changelog!
+* Some minor bug fixes to `config.py`, `process.py` and implementing a main function in `main.py`
+* Finalizing the README files.
+
+### V4.0 - 33e7a8a
  _Ata Bekişoğlu - 09/01/2024_
 * Final stable version: welcome to version 4.0
 * I missed to list some changes in the past 2-3 commits but, looking back at them, i'll try my best to add them here:

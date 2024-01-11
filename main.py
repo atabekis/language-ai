@@ -10,35 +10,38 @@ If the code doesn't run when cloning from GitHub, the data folder is assumed to 
 from methods.process import Experiment
 
 
-def main():
+def main(
+        # Main experiments
+        single_experiment: str = None,
+        multiple_experiments: bool = True,
+        cross_validate_experiments: bool = False,
+        # Controls for the experiment class
+        time_experiments: bool = True,
+        verbose: bool = True,
+        debug: bool = False,
+        # Saving and loading models
+        load_existing_models: bool = False,
+        save_models: bool = True):
     """Main function to run the experiment.
     Notes:
         In order to control the data-reader part of the experiment please refer to process.py;
             In the Experiment class, the Reader object can be called with the attribute "clean=True/False"
     """
+    # Create the experiment object
     experiment = Experiment(
-        time_experiments=True,
-        verbose=True,
-        debug=False  # This cuts the data by a debug factor.
-    )
-    experiment.debug_cutoff = 0.1
-    # Comment models in order to exclude from the experiment...
-    experiment.models = [
-        'naive-bayes',
-        'svm',
-        'logistic',
-        # Neural
-        'cnn',
-        'lstm',
-        # WordEmbeddings
-        'fasttext',
-    ]
+        time_experiments=time_experiments,
+        verbose=verbose,
+        debug=debug)
 
-    experiment.resampling_method = None
+    if single_experiment:
+        experiment.perform_single_experiment(pipeline_model=single_experiment,
+                                             save_pipe=save_models,
+                                             load_pipe=load_existing_models)
+    if multiple_experiments:
+        experiment.perform_many_experiments(save_pipes=save_models, load_pipes=load_existing_models)
 
-    experiment.perform_single_experiment(pipeline_model='fasttext', load_pipe=False)
-
-    # experiment.perform_many_experiments(save_pipes=True, load_pipes=True)
+    if cross_validate_experiments:
+        experiment.cross_validate_experiments(verbose=verbose)
 
 
 if __name__ == '__main__':

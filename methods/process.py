@@ -35,7 +35,7 @@ from joblib import dump, load
 
 # Util
 from util import log
-from config import __DATA_PATH__, __PROJECT_PATH__
+from config import __DATA_PATH__, __PROJECT_PATH__, __RANDOM_SEED__
 
 __RANDOM_SEED__ = 5
 

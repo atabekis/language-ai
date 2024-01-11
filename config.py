@@ -1,4 +1,6 @@
 import os
+__RANDOM_SEED__ = 5
+
 __DATA_PATH__ = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'extrovert_introvert.csv')
 __EXPERIMENTS_PATH__ = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'methods', 'output')
 __PIPELINES_PATH__ = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'methods', 'pipelines')
