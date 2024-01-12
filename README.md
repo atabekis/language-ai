@@ -4,7 +4,7 @@ _JBC090 - Language & AI, \
 Eindhoven University of Technology, Tilburg University
 2023-2024_
 
- > ADD: Link to the paper
+ > The paper is not openly published within this repository. Instead a submission has been made to Canvas.
 
 ### Table of Contents
 * [About](https://github.com/atabekis/language-ai?tab=readme-ov-file#about)
